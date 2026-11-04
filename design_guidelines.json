@@ -1,0 +1,257 @@
+{
+  "theme": {
+    "default_mode": "light",
+    "theme_archetype": "ORGANIC_PASTEL_FUSION",
+    "rationale": "Feira de Ciências (Science Fair) in Brazil: vibrant, welcoming, youthful, and accessible for phone users standing in front of project booths. Soft warm tones (amber, mint, warm slate, coral) bring friendly human energy while avoiding sterile corporate blues. Light mode default fits bright school/university exhibition halls."
+  },
+  "colors": {
+    "surfaces": [
+      {
+        "name": "page",
+        "kind": "solid",
+        "bg": "#FAF9F5",
+        "on_bg": "#1E293B",
+        "on_bg_muted": "#475569",
+        "roles": {
+          "link": "#0D9488",
+          "error": "#BE123C",
+          "success": "#047857",
+          "brand_badge": "#0F766E"
+        }
+      },
+      {
+        "name": "panel",
+        "kind": "solid",
+        "bg": "#FFFFFF",
+        "on_bg": "#0F172A",
+        "on_bg_muted": "#475569",
+        "roles": {
+          "link": "#0F766E",
+          "error": "#BE123C",
+          "success": "#047857"
+        }
+      },
+      {
+        "name": "rating_card_horrivel",
+        "kind": "solid",
+        "bg": "#FFF1F2",
+        "on_bg": "#881337",
+        "on_bg_muted": "#9F1239"
+      },
+      {
+        "name": "rating_card_ruim",
+        "kind": "solid",
+        "bg": "#FFF7ED",
+        "on_bg": "#7C2D12",
+        "on_bg_muted": "#9A3412"
+      },
+      {
+        "name": "rating_card_regular",
+        "kind": "solid",
+        "bg": "#FEFCE8",
+        "on_bg": "#713F12",
+        "on_bg_muted": "#854D0E"
+      },
+      {
+        "name": "rating_card_bom",
+        "kind": "solid",
+        "bg": "#ECFDF5",
+        "on_bg": "#064E3B",
+        "on_bg_muted": "#065F46"
+      },
+      {
+        "name": "rating_card_incrivel",
+        "kind": "solid",
+        "bg": "#F0FDF4",
+        "on_bg": "#14532D",
+        "on_bg_muted": "#166534"
+      },
+      {
+        "name": "privacy_banner",
+        "kind": "solid",
+        "bg": "#EFF6FF",
+        "on_bg": "#1E3A8A",
+        "on_bg_muted": "#1D4ED8"
+      },
+      {
+        "name": "mural_card",
+        "kind": "solid",
+        "bg": "#FFFFFF",
+        "on_bg": "#0F172A",
+        "on_bg_muted": "#475569"
+      },
+      {
+        "name": "inverse",
+        "kind": "solid",
+        "bg": "#0F172A",
+        "on_bg": "#F8FAFC",
+        "on_bg_muted": "#CBD5E1"
+      }
+    ],
+    "accent": "#0D9488",
+    "on_accent": "#FFFFFF",
+    "rating_palette": {
+      "1_horrivel": {
+        "label": "Horrível",
+        "emoji": "😡",
+        "face_icon_description": "Rosto bem irritado / decepcionado",
+        "color": "#E11D48",
+        "bg": "#FFF1F2",
+        "border": "#FDA4AF"
+      },
+      "2_ruim": {
+        "label": "Ruim",
+        "emoji": "🙁",
+        "face_icon_description": "Rosto desapontado / cabisbaixo",
+        "color": "#EA580C",
+        "bg": "#FFF7ED",
+        "border": "#FDBA74"
+      },
+      "3_regular": {
+        "label": "Regular / Ok",
+        "emoji": "😐",
+        "face_icon_description": "Rosto neutro e reflexivo",
+        "color": "#CA8A04",
+        "bg": "#FEFCE8",
+        "border": "#FDE047"
+      },
+      "4_bom": {
+        "label": "Muito Bom",
+        "emoji": "😊",
+        "face_icon_description": "Rosto alegre e satisfeito",
+        "color": "#059669",
+        "bg": "#ECFDF5",
+        "border": "#6EE7B7"
+      },
+      "5_incrivel": {
+        "label": "Incrível!",
+        "emoji": "🤩",
+        "face_icon_description": "Rosto maravilhado / estrelas nos olhos",
+        "color": "#0284C7",
+        "bg": "#F0F9FF",
+        "border": "#7DD3FC"
+      }
+    }
+  },
+  "typography": {
+    "font_family_heading": "Outfit Variable, sans-serif",
+    "font_family_body": "Plus Jakarta Sans Variable, sans-serif",
+    "font_family_mono": "IBM Plex Mono, monospace",
+    "css_import": "@import \"@fontsource-variable/outfit\";\n@import \"@fontsource-variable/plus-jakarta-sans\";",
+    "scale_px": {
+      "display": 48,
+      "h1": 36,
+      "h2": 28,
+      "h3": 20,
+      "body": 16,
+      "caption": 14
+    },
+    "hierarchy_rules": {
+      "hero_title": "text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight",
+      "section_title": "text-lg sm:text-xl font-bold tracking-tight text-slate-900",
+      "body_text": "text-base leading-relaxed text-slate-700",
+      "supporting_text": "text-sm leading-normal text-slate-600",
+      "badge_text": "text-xs font-semibold tracking-wider uppercase text-slate-600"
+    }
+  },
+  "entry_surfaces": {
+    "/": "split mobile-first view — stand identifier & quick emotional rating faces above fold, suggestion box & anonymous pledge below, tabbed switch to live booth feedback mural"
+  },
+  "layouts_and_grids": {
+    "mobile_first_container": "max-w-md mx-auto w-full px-4 py-4 sm:max-w-2xl sm:px-6 lg:max-w-4xl lg:px-8",
+    "rating_face_selector_grid": "grid grid-cols-5 gap-2 sm:gap-3 items-stretch justify-items-center my-4",
+    "mural_masonry_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr",
+    "stand_meta_card": "rounded-2xl border border-amber-200/80 bg-white/90 backdrop-blur-md p-4 shadow-sm mb-4",
+    "feedback_form_card": "rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-md transition-all duration-300",
+    "success_state_card": "rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white p-6 sm:p-8 text-center"
+  },
+  "component_hierarchy": [
+    {
+      "name": "Header & Stand Selector",
+      "path": "frontend/src/components/StandHeader.tsx",
+      "role": "Shows science fair title, active booth/stand badge (e.g. 'Estande #12 - Robótica & IA Sustentável'), and live stats counter (total avaliações)."
+    },
+    {
+      "name": "Emotional Face Scale (Rostinhos)",
+      "path": "frontend/src/components/EmotionalRatingScale.tsx",
+      "role": "5 expressive animated face buttons (Horrível 😡 to Incrível 🤩) with haptic feel, micro-bounce, clear text labels, active rings, and data-testid attributes."
+    },
+    {
+      "name": "Suggestion & Criteria Section",
+      "path": "frontend/src/components/SuggestionForm.tsx",
+      "role": "Aspect quick tags (Clareza, Protótipo, Criatividade, Domínio do Tema), optional suggestion textarea ('Como melhorar na próxima vez?'), anonymous assurance shield banner, and submit CTA button."
+    },
+    {
+      "name": "Live Feedback Wall (Mural de Avaliações)",
+      "path": "frontend/src/components/FeedbackMural.tsx",
+      "role": "Aggregated visitor sentiment score, emoji breakdown bar, real-time list of anonymous suggestions, helpful votes, and booth filter."
+    },
+    {
+      "name": "Stand Switcher / QR Simulator Modal",
+      "path": "frontend/src/components/StandSwitcher.tsx",
+      "role": "Allows switching between Science Fair booths (Robô Seguidor de Linha, Energia Solar com Arduino, Bioplástico de Mandioca, etc.) to evaluate different student teams."
+    }
+  ],
+  "motion": {
+    "library": "motion/react",
+    "presets": {
+      "face_button_hover": {
+        "scale": 1.08,
+        "y": -3,
+        "transition": { "type": "spring", "stiffness": 400, "damping": 17 }
+      },
+      "face_button_active": {
+        "scale": 0.94
+      },
+      "feedback_submitted_confetti": "Triggers animated confetti particles + warm tick celebration on Incrível/Bom ratings",
+      "tab_transition": {
+        "initial": { "opacity": 0, "y": 8 },
+        "animate": { "opacity": 1, "y": 0 },
+        "exit": { "opacity": 0, "y": -8 },
+        "transition": { "duration": 0.22, "ease": "easeOut" }
+      }
+    }
+  },
+  "accessibility": {
+    "wcag_target": "WCAG AA (minimum 4.5:1 text, 3:1 graphical touch indicators)",
+    "touch_targets": "Minimum 48x48px on all 5 rating face buttons and touch controls",
+    "radiogroup_semantics": "Rating row uses role='radiogroup' and aria-labelledby='rating-label', each option has role='radio', aria-checked, and explicit label",
+    "privacy_reassurance": "Clear visible badge: '100% Anônimo — nenhum dado pessoal é coletado ou exibido aos alunos'",
+    "reduced_motion": "Wrap spring animations in Tailwind prefers-reduced-motion:transition-none"
+  },
+  "image_urls": [
+    {
+      "category": "science_fair_hero",
+      "description": "Estudantes apresentando projeto prático de robótica e tecnologia na feira",
+      "url": "https://images.pexels.com/photos/7869079/pexels-photo-7869079.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "category": "science_fair_booth_team",
+      "description": "Equipe de estudantes demonstrando experimento de ciências",
+      "url": "https://images.pexels.com/photos/40286202/pexels-photo-40286202.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "category": "science_fair_students_group",
+      "description": "Jovens interagindo com projetos de tecnologia em espaço expositivo",
+      "url": "https://images.unsplash.com/photo-1782388716252-d598f84ea62f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwxfHxzY2llbmNlJTIwZmFpciUyMHN0dWRlbnRzJTIwcHJvamVjdHxlbnwwfHx8fDE3OTM0NDM3Njh8MA&ixlib=rb-4.1.0&q=85"
+    }
+  ],
+  "instructions_to_main_agent": [
+    "Locale & Language: Portuguese (pt-BR) throughout the interface (e.g. 'Feira de Ciências', 'Avaliação da Apresentação', 'Como foi a explicação da equipe?', 'Sugestão para a próxima vez', 'Mural ao Vivo', 'Enviar Avaliação Anônima').",
+    "Immediate Phone Usability: Optimize first screen for an attendee standing right at the student booth with one hand holding their phone. Keep rating faces immediately clickable at the top.",
+    "Expressive Face Scale: Implement all 5 levels clearly: 1 - Horrível (😡), 2 - Ruim (🙁), 3 - Regular (😐), 4 - Bom (😊), 5 - Incrível! (🤩). Provide both custom visual face cards with distinct color tints and clear Portuguese labels.",
+    "Quick Aspect Tags (Pill selectors): Allow clicking tags like 'Explicação Clara', 'Protótipo Funcionando', 'Inovação', 'Postura da Equipe', 'Dificuldade de Ouvir', 'Visual do Pôster' to enrich the feedback with 1 tap.",
+    "Optional Suggestion Textarea: Field for constructive suggestions ('Deixe uma dica amiga para os estudantes brilharem na próxima!') with placeholder and character counter.",
+    "Privacy Assurance: Explicit shield banner: '🔒 Avaliação 100% Anônima. Ajude os alunos a crescerem sem identificação pessoal.'",
+    "Dual View: Segmented toggle between '✨ Avaliar Estande' (Form) and '📊 Mural da Feira' (Live aggregated scores, feedback wall, booth rankings and charts).",
+    "Multi-stand Support: Include sample science fair projects (e.g., 'Estande 01: Braço Robótico Hidráulico', 'Estande 02: Purificador Solar de Água', 'Estande 03: Bioplásticos Biodegradáveis', 'Estande 04: IA para Detecção de Queimadas') with easy switching.",
+    "Testing Attributes: Add data-testid to key elements: data-testid='rating-btn-horrivel', data-testid='rating-btn-ruim', data-testid='rating-btn-regular', data-testid='rating-btn-bom', data-testid='rating-btn-incrivel', data-testid='suggestion-textarea', data-testid='submit-feedback-btn', data-testid='tab-mural', data-testid='stand-select', data-testid='feedback-success-message'."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Avoid AI slop: Use vibrant warm colors, crisp borders, tactile cards, and friendly micro-interactions.",
+    "Never apply universal 'transition: all' or app-wide 'text-align: center'.",
+    "Use sonner for instant toast feedback ('Avaliação enviada com sucesso! Obrigado por apoiar a ciência jovem 🚀').",
+    "Ensure touch target size is >= 48px for comfortable thumb tapping on mobile devices.",
+    "Provide empty and fallback states if backend API fails, ensuring preview remains completely interactive with seeded mock projects."
+  ]
+}
