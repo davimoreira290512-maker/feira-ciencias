@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, APIRouter
 from dotenv import load_dotenv
@@ -20,22 +19,12 @@ load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 from lib.db import client, db, ensure_indexes
-from lib.storage import init_storage
-
-
-async def _init_storage_in_background() -> None:
-    try:
-        await asyncio.to_thread(init_storage)
-        logging.getLogger(__name__).info("Object storage initialized")
-    except Exception as exc:  # uploads retry init lazily; never block boot
-        logging.getLogger(__name__).error("Object storage init failed: %s", exc)
 
 
 # Startup runs before the yield, shutdown after it. Add your own setup/teardown here.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.index_task = asyncio.create_task(ensure_indexes())  # background: a big index build must not block boot
-    app.state.storage_task = asyncio.create_task(_init_storage_in_background())
     yield
     client.close()
 
