@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -21,10 +21,23 @@ import type {
   FeedbackSummary,
 } from "@/lib/feedback";
 import { Toaster } from "@/components/ui/sonner";
-import { endSession } from "@/lib/session";
+import { beginSession, endSession } from "@/lib/session";
 import MuralMessages from "@/components/MuralMessages";
 import type { UnreadCount } from "@/lib/mural";
 import OwnerPasswordCard from "@/components/OwnerPasswordCard";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
 
 const ratings = [
   { value: 1, label: "Horrível", face: "😡", color: "rose" },
@@ -48,6 +61,7 @@ type View = "form" | "mural";
 
 export default function Home() {
   const queryClient = useQueryClient();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const startOnMural = new URLSearchParams(location.search).get("view") === "mural";
   const [view, setView] = useState<View>(startOnMural ? "mural" : "form");
@@ -71,6 +85,29 @@ export default function Home() {
     retry: false,
     staleTime: 30_000,
   });
+
+  const authIsUnauthorized = authQuery.error instanceof ApiError && authQuery.error.status === 401;
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const element = googleButtonRef.current;
+    if (view !== "mural" || !authIsUnauthorized || !clientId || !element || !window.google) return;
+    element.replaceChildren();
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async ({ credential }) => {
+        try {
+          const user = await apiPost<AuthUser>("/auth/session", { credential });
+          beginSession();
+          queryClient.setQueryData(["auth-me"], user);
+          toast.success("Entrada com Google realizada.");
+        } catch {
+          toast.error("Não foi possível entrar com Google. Tente novamente.");
+        }
+      },
+    });
+    window.google.accounts.id.renderButton(element, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", locale: "pt-BR" });
+  }, [view, authIsUnauthorized, queryClient]);
 
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
@@ -162,12 +199,6 @@ export default function Home() {
     unlockMural.mutate({ password: accessPassword });
   }
 
-  function loginWithGoogle() {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = `${window.location.origin}/?view=mural`;
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  }
-
   async function handleLogout() {
     await endSession("/?view=mural");
   }
@@ -184,9 +215,6 @@ export default function Home() {
   }
 
   const summary = summaryQuery.data;
-  const authIsUnauthorized =
-    authQuery.error instanceof ApiError && authQuery.error.status === 401;
-
   return (
     <div className="min-h-svh bg-[#FAF9F5] text-slate-900">
       <Toaster />
@@ -454,15 +482,7 @@ export default function Home() {
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-700" data-testid="google-login-gate-copy">
                   Entre com sua conta Google e depois digite a senha compartilhada para ver as avaliações e sugestões.
                 </p>
-                <button
-                  className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-slate-900 px-5 font-bold text-white transition-colors duration-200 hover:bg-slate-700"
-                  data-testid="google-login-button"
-                  onClick={loginWithGoogle}
-                  type="button"
-                >
-                  Entrar com Google
-                  <span aria-hidden="true" className="text-lg">G</span>
-                </button>
+                <div className="mt-5" data-testid="google-login-button" ref={googleButtonRef} />
               </div>
             )}
 
