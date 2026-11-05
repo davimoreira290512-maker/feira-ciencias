@@ -1,62 +1,53 @@
-"""Emergent managed object storage. Files are private: the app proxies every read."""
+"""Private object storage backed by Cloudflare R2 (S3-compatible API)."""
 
 import asyncio
-import logging
 import os
+from functools import lru_cache
 
-import requests
+import boto3
+from botocore.config import Config
 
-logger = logging.getLogger(__name__)
 
-# `or`, not a default= argument: the platform sets this to "" when it has no value.
-STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
-STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
 APP_NAME = "feira-ciencias"
 
-_storage_key: str | None = None
 
-
-def init_storage(force: bool = False) -> str:
-    global _storage_key
-    if _storage_key and not force:
-        return _storage_key
-    resp = requests.post(
-        f"{STORAGE_URL}/init",
-        json={"emergent_key": os.environ.get("EMERGENT_LLM_KEY")},
-        timeout=30,
+@lru_cache(maxsize=1)
+def _client():
+    account_id = os.environ.get("R2_ACCOUNT_ID", "").strip()
+    access_key = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+    secret_key = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+    if not all((account_id, access_key, secret_key)):
+        raise RuntimeError("Configure R2_ACCOUNT_ID, R2_ACCESS_KEY_ID e R2_SECRET_ACCESS_KEY.")
+    return boto3.client(
+        "s3",
+        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name="auto",
+        config=Config(signature_version="s3v4"),
     )
-    resp.raise_for_status()
-    _storage_key = resp.json()["storage_key"]
-    return _storage_key
+
+
+def _bucket() -> str:
+    bucket = os.environ.get("R2_BUCKET_NAME", "").strip()
+    if not bucket:
+        raise RuntimeError("Configure R2_BUCKET_NAME.")
+    return bucket
 
 
 def _put(path: str, data: bytes, content_type: str) -> dict:
-    for attempt in range(2):
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": init_storage(force=attempt == 1), "Content-Type": content_type},
-            data=data,
-            timeout=120,
-        )
-        if resp.status_code == 404 and attempt == 0:
-            continue  # stale storage key: mint a new one once
-        resp.raise_for_status()
-        return resp.json()
-    raise RuntimeError("unreachable")
+    _client().put_object(
+        Bucket=_bucket(),
+        Key=path,
+        Body=data,
+        ContentType=content_type,
+    )
+    return {"path": path, "size": len(data)}
 
 
 def _get(path: str) -> tuple[bytes, str]:
-    for attempt in range(2):
-        resp = requests.get(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": init_storage(force=attempt == 1)},
-            timeout=60,
-        )
-        if resp.status_code == 404 and attempt == 0:
-            continue
-        resp.raise_for_status()
-        return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
-    raise RuntimeError("unreachable")
+    response = _client().get_object(Bucket=_bucket(), Key=path)
+    return response["Body"].read(), response.get("ContentType", "application/octet-stream")
 
 
 async def put_object(path: str, data: bytes, content_type: str) -> dict:
