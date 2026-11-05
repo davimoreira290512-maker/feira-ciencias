@@ -263,7 +263,7 @@ export default function Home() {
             data-testid="anonymous-header-badge"
           >
             <LockKeyhole aria-hidden="true" className="size-3.5" />
-            100% anônimo
+            Avaliação anônima
           </div>
         </header>
 
@@ -467,7 +467,7 @@ export default function Home() {
               >
                 <LockKeyhole aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-blue-800" />
                 <p data-testid="privacy-assurance-copy">
-                  Avaliação 100% anônima. Nenhum dado pessoal é coletado ou exibido aos alunos.
+                  A avaliação não mostra seu nome ou e-mail. Um cookie essencial guarda um identificador aleatório deste navegador por até 1 ano para impedir envios repetidos.
                 </p>
               </div>
 
