@@ -81,7 +81,7 @@ export default function Home() {
   const authQuery = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => apiGet<AuthUser>("/auth/me"),
-    enabled: view === "mural",
+    enabled: true,
     retry: false,
     staleTime: 30_000,
   });
@@ -190,8 +190,16 @@ export default function Home() {
       setSent(true);
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
-    onError: () => {
-      toast.error("Não foi possível enviar agora. Tente novamente em instantes.");
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error("Este navegador já enviou uma avaliação. Para avaliar novamente, entre no Mural e libere seu acesso.");
+        return;
+      }
+      toast.error(
+        error instanceof Error && error.message.includes("cookies essenciais")
+          ? error.message
+          : "Não foi possível enviar agora. Tente novamente em instantes.",
+      );
     },
   });
 
@@ -336,15 +344,17 @@ export default function Home() {
               <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600" data-testid="feedback-success-description">
                 Sua avaliação anônima já ajuda a próxima apresentação a ficar ainda melhor.
               </p>
-              <button
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
-                data-testid="new-feedback-button"
-                onClick={startNewFeedback}
-                type="button"
-              >
-                Avaliar outra apresentação
-                <Sparkles aria-hidden="true" className="size-4" />
-              </button>
+              {authQuery.data?.mural_unlocked === true && (
+                <button
+                  className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
+                  data-testid="new-feedback-button"
+                  onClick={startNewFeedback}
+                  type="button"
+                >
+                  Avaliar outra apresentação
+                  <Sparkles aria-hidden="true" className="size-4" />
+                </button>
+              )}
             </section>
           ) : (
             <form
