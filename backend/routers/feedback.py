@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
 from models.auth import AuthUser
@@ -12,13 +13,29 @@ from models.feedback import (
     new_feedback_id,
     utc_now,
 )
-from routers.auth import require_mural_access
+from routers.auth import optional_mural_user, require_mural_access
 
 router = APIRouter()
 
 
 @router.post("/feedback", response_model=FeedbackReceipt)
-async def create_feedback(payload: FeedbackCreate) -> FeedbackReceipt:
+async def create_feedback(
+    payload: FeedbackCreate,
+    request: Request,
+    mural_user: AuthUser | None = Depends(optional_mural_user),
+) -> FeedbackReceipt:
+    # The visitor cookie is first-party on the Pages site and is sent as a header.
+    # Visitors without mural access may submit only once per browser cookie.
+    visitor_id = request.headers.get("X-Feedback-Visitor", "").strip()
+    if mural_user is None:
+        if not visitor_id:
+            raise HTTPException(status_code=400, detail="Cookie essencial de avaliação indisponível.")
+        if await db.feedback.find_one({"visitor_id": visitor_id}, {"_id": 1}):
+            raise HTTPException(
+                status_code=409,
+                detail="Este navegador já enviou uma avaliação. O acesso ao mural permite avaliar novamente.",
+            )
+
     feedback_id = new_feedback_id()
     rating = payload.rating
     document = {
@@ -30,7 +47,15 @@ async def create_feedback(payload: FeedbackCreate) -> FeedbackReceipt:
         "suggestion": payload.suggestion.strip(),
         "created_at": utc_now(),
     }
-    await db.feedback.insert_one(document)
+    if mural_user is None:
+        document["visitor_id"] = visitor_id
+    try:
+        await db.feedback.insert_one(document)
+    except DuplicateKeyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Este navegador já enviou uma avaliação. O acesso ao mural permite avaliar novamente.",
+        ) from exc
     return FeedbackReceipt(id=feedback_id, rating=rating)
 
 

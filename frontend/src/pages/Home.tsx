@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -21,10 +21,23 @@ import type {
   FeedbackSummary,
 } from "@/lib/feedback";
 import { Toaster } from "@/components/ui/sonner";
-import { endSession } from "@/lib/session";
+import { beginSession, endSession } from "@/lib/session";
 import MuralMessages from "@/components/MuralMessages";
 import type { UnreadCount } from "@/lib/mural";
 import OwnerPasswordCard from "@/components/OwnerPasswordCard";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
 
 const ratings = [
   { value: 1, label: "Horrível", face: "😡", color: "rose" },
@@ -48,6 +61,7 @@ type View = "form" | "mural";
 
 export default function Home() {
   const queryClient = useQueryClient();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const startOnMural = new URLSearchParams(location.search).get("view") === "mural";
   const [view, setView] = useState<View>(startOnMural ? "mural" : "form");
@@ -67,10 +81,47 @@ export default function Home() {
   const authQuery = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => apiGet<AuthUser>("/auth/me"),
-    enabled: view === "mural",
+    enabled: true,
     retry: false,
     staleTime: 30_000,
   });
+
+  const authIsUnauthorized = authQuery.error instanceof ApiError && authQuery.error.status === 401;
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const element = googleButtonRef.current;
+    if (view !== "mural" || !authIsUnauthorized || !clientId || !element) return;
+    let cancelled = false;
+    const mountGoogleButton = () => {
+      if (cancelled || !window.google || !googleButtonRef.current) return;
+      googleButtonRef.current.replaceChildren();
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          try {
+            const user = await apiPost<AuthUser>("/auth/session", { credential });
+            beginSession();
+            queryClient.setQueryData(["auth-me"], user);
+            toast.success("Entrada com Google realizada.");
+          } catch {
+            toast.error("Não foi possível entrar com Google. Tente novamente.");
+          }
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", locale: "pt-BR" });
+    };
+    if (window.google) {
+      mountGoogleButton();
+      return () => { cancelled = true; };
+    }
+    const script = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    script?.addEventListener("load", mountGoogleButton, { once: true });
+    return () => {
+      cancelled = true;
+      script?.removeEventListener("load", mountGoogleButton);
+    };
+  }, [view, authIsUnauthorized, queryClient]);
 
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
@@ -139,8 +190,16 @@ export default function Home() {
       setSent(true);
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
-    onError: () => {
-      toast.error("Não foi possível enviar agora. Tente novamente em instantes.");
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error("Este navegador já enviou uma avaliação. Para avaliar novamente, entre no Mural e libere seu acesso.");
+        return;
+      }
+      toast.error(
+        error instanceof Error && error.message.includes("cookies essenciais")
+          ? error.message
+          : "Não foi possível enviar agora. Tente novamente em instantes.",
+      );
     },
   });
 
@@ -162,12 +221,6 @@ export default function Home() {
     unlockMural.mutate({ password: accessPassword });
   }
 
-  function loginWithGoogle() {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = `${window.location.origin}/?view=mural`;
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  }
-
   async function handleLogout() {
     await endSession("/?view=mural");
   }
@@ -184,9 +237,6 @@ export default function Home() {
   }
 
   const summary = summaryQuery.data;
-  const authIsUnauthorized =
-    authQuery.error instanceof ApiError && authQuery.error.status === 401;
-
   return (
     <div className="min-h-svh bg-[#FAF9F5] text-slate-900">
       <Toaster />
@@ -213,7 +263,7 @@ export default function Home() {
             data-testid="anonymous-header-badge"
           >
             <LockKeyhole aria-hidden="true" className="size-3.5" />
-            100% anônimo
+            Avaliação anônima
           </div>
         </header>
 
@@ -294,15 +344,17 @@ export default function Home() {
               <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600" data-testid="feedback-success-description">
                 Sua avaliação anônima já ajuda a próxima apresentação a ficar ainda melhor.
               </p>
-              <button
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
-                data-testid="new-feedback-button"
-                onClick={startNewFeedback}
-                type="button"
-              >
-                Avaliar outra apresentação
-                <Sparkles aria-hidden="true" className="size-4" />
-              </button>
+              {authQuery.data?.mural_unlocked === true && (
+                <button
+                  className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
+                  data-testid="new-feedback-button"
+                  onClick={startNewFeedback}
+                  type="button"
+                >
+                  Avaliar outra apresentação
+                  <Sparkles aria-hidden="true" className="size-4" />
+                </button>
+              )}
             </section>
           ) : (
             <form
@@ -415,7 +467,7 @@ export default function Home() {
               >
                 <LockKeyhole aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-blue-800" />
                 <p data-testid="privacy-assurance-copy">
-                  Avaliação 100% anônima. Nenhum dado pessoal é coletado ou exibido aos alunos.
+                  A avaliação não mostra seu nome ou e-mail. Um cookie essencial guarda um identificador aleatório deste navegador por até 1 ano para impedir envios repetidos.
                 </p>
               </div>
 
@@ -454,15 +506,7 @@ export default function Home() {
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-700" data-testid="google-login-gate-copy">
                   Entre com sua conta Google e depois digite a senha compartilhada para ver as avaliações e sugestões.
                 </p>
-                <button
-                  className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-slate-900 px-5 font-bold text-white transition-colors duration-200 hover:bg-slate-700"
-                  data-testid="google-login-button"
-                  onClick={loginWithGoogle}
-                  type="button"
-                >
-                  Entrar com Google
-                  <span aria-hidden="true" className="text-lg">G</span>
-                </button>
+                <div className="mt-5" data-testid="google-login-button" ref={googleButtonRef} />
               </div>
             )}
 

@@ -1,10 +1,12 @@
 import hmac
+import secrets
 import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import httpx
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from passlib.context import CryptContext
 from pymongo import ReturnDocument
@@ -13,7 +15,6 @@ from lib.db import db
 from models.auth import (
     AuthorizedMuralUser,
     AuthUser,
-    GoogleSessionData,
     GoogleSessionExchange,
     MuralPasswordChange,
     MuralUnlockRequest,
@@ -23,7 +24,6 @@ router = APIRouter(prefix="/auth")
 logger = logging.getLogger(__name__)
 SESSION_COOKIE = "session_token"
 SESSION_SECONDS = 7 * 24 * 60 * 60
-SESSION_DATA_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 MURAL_SETTINGS_ID = "mural"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -124,46 +124,32 @@ async def exchange_google_session(
     payload: GoogleSessionExchange,
     response: Response,
 ) -> AuthUser:
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Login Google ainda não foi configurado.")
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            provider_response = await client.get(
-                SESSION_DATA_URL,
-                headers={"X-Session-ID": payload.session_id},
-            )
-    except httpx.HTTPError as exc:
-        logger.exception("Google session verification request failed: %s", exc)
-        raise HTTPException(
-            status_code=502,
-            detail="Não foi possível validar a entrada Google. Tente novamente.",
-        ) from exc
-
-    if not provider_response.is_success:
-        logger.error(
-            "Google session verification returned %s: %s",
-            provider_response.status_code,
-            provider_response.text,
+        provider_user = id_token.verify_oauth2_token(
+            payload.credential,
+            google_requests.Request(),
+            client_id,
         )
-        if provider_response.status_code == 401:
-            raise HTTPException(status_code=401, detail="A sessão Google expirou. Entre novamente.")
-        if provider_response.status_code == 402:
-            raise HTTPException(status_code=402, detail="A autenticação está temporariamente indisponível.")
-        if provider_response.status_code == 429:
-            raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde e tente novamente.")
-        raise HTTPException(status_code=502, detail="Não foi possível validar a entrada Google.")
+    except ValueError as exc:
+        logger.warning("Google ID token validation failed: %s", exc)
+        raise HTTPException(status_code=401, detail="Não foi possível validar sua conta Google.") from exc
 
-    try:
-        provider_user = GoogleSessionData.model_validate(provider_response.json())
-    except (ValueError, TypeError) as exc:
-        logger.exception("Google session response was invalid: %s", exc)
-        raise HTTPException(status_code=502, detail="Resposta inválida do serviço de autenticação.") from exc
+    if not provider_user.get("email") or not provider_user.get("email_verified"):
+        raise HTTPException(status_code=401, detail="A conta Google precisa ter e-mail verificado.")
 
-    email = provider_user.email.strip().lower()
+    email = provider_user["email"].strip().lower()
     now = datetime.now(timezone.utc)
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     user = await db.users.find_one_and_update(
         {"email": email},
         {
-            "$set": {"name": provider_user.name, "picture": provider_user.picture},
+            "$set": {
+                "name": provider_user.get("name") or email,
+                "picture": provider_user.get("picture"),
+            },
             "$setOnInsert": {
                 "user_id": user_id,
                 "email": email,
@@ -175,22 +161,18 @@ async def exchange_google_session(
         projection={"_id": 0},
     )
 
-    expires_at = now + timedelta(days=7)
-    await db.user_sessions.update_one(
-        {"session_token": provider_user.session_token},
-        {
-            "$set": {
-                "user_id": user["user_id"],
-                "expires_at": expires_at,
-                "created_at": now,
-                "mural_unlocked": False,
-            }
-        },
-        upsert=True,
-    )
+    session_token = secrets.token_urlsafe(32)
+    expires_at = now + timedelta(seconds=SESSION_SECONDS)
+    await db.user_sessions.insert_one({
+        "session_token": session_token,
+        "user_id": user["user_id"],
+        "expires_at": expires_at,
+        "created_at": now,
+        "mural_unlocked": False,
+    })
     response.set_cookie(
         key=SESSION_COOKIE,
-        value=provider_user.session_token,
+        value=session_token,
         max_age=SESSION_SECONDS,
         httponly=True,
         secure=True,
