@@ -3,6 +3,8 @@ import { defineConfig, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const hotReloadDisabled = process.env.DISABLE_HOT_RELOAD === "true";
+
 // Pod inotify quota is node-shared and routinely exhausted; native fs.watch EMFILEs at
 // boot. Polling is the load-bearing default (set before Vite evaluates the config).
 if (!hotReloadDisabled) {
@@ -14,8 +16,6 @@ export default defineConfig({
     plugins: [
       react(),
       tailwindcss(),
-      // No isServe guard: this factory takes no ConfigEnv arg, so build purity here rests
-      // on the package's own `apply: "serve"`.
     ],
     resolve: {
       alias: [
@@ -64,15 +64,9 @@ export default defineConfig({
       host: true,
       port: 3000,
       allowedHosts: true,
-      // Preview probe + /edit-file are cross-origin from the Emergent tab; Vite defaults to localhost-only CORS.
       cors: true,
-      // No hmr.clientPort override: Vite infers the WS target from window.location, which
-      // is correct on both localhost:3000 (smoke) and the https/:443 preview proxy.
-      // Build-error rendering: emergent-overlay when it loaded, else Vite's own overlay.
       hmr: hotReloadDisabled ? false : true,
       watch: hotReloadDisabled ? null : { usePolling: true, interval: 300 },
-      // The /api proxy convention: frontend code calls relative /api/*, never an
-      // absolute backend URL. Target is the FastAPI dev server (supervisor: backend).
       proxy: {
         "/api": {
           target: "http://localhost:8001",
@@ -80,5 +74,4 @@ export default defineConfig({
         },
       },
     },
-  } satisfies UserConfig;
-});
+  } satisfies UserConfig);
