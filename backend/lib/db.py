@@ -22,6 +22,12 @@ INDEXES: dict[str, list[IndexModel]] = {
     "feedback": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
+        IndexModel(
+            [("visitor_id", ASCENDING)],
+            name="visitor_id_unique",
+            unique=True,
+            sparse=True,
+        ),
     ],
     "users": [
         IndexModel([("email", ASCENDING)], name="email", unique=True),
