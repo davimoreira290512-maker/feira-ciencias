@@ -15,7 +15,6 @@ from lib.db import db
 from models.auth import (
     AuthorizedMuralUser,
     AuthUser,
-    GoogleSessionData,
     GoogleSessionExchange,
     MuralPasswordChange,
     MuralUnlockRequest,
