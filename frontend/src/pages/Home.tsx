@@ -91,22 +91,36 @@ export default function Home() {
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const element = googleButtonRef.current;
-    if (view !== "mural" || !authIsUnauthorized || !clientId || !element || !window.google) return;
-    element.replaceChildren();
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async ({ credential }) => {
-        try {
-          const user = await apiPost<AuthUser>("/auth/session", { credential });
-          beginSession();
-          queryClient.setQueryData(["auth-me"], user);
-          toast.success("Entrada com Google realizada.");
-        } catch {
-          toast.error("Não foi possível entrar com Google. Tente novamente.");
-        }
-      },
-    });
-    window.google.accounts.id.renderButton(element, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", locale: "pt-BR" });
+    if (view !== "mural" || !authIsUnauthorized || !clientId || !element) return;
+    let cancelled = false;
+    const mountGoogleButton = () => {
+      if (cancelled || !window.google || !googleButtonRef.current) return;
+      googleButtonRef.current.replaceChildren();
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          try {
+            const user = await apiPost<AuthUser>("/auth/session", { credential });
+            beginSession();
+            queryClient.setQueryData(["auth-me"], user);
+            toast.success("Entrada com Google realizada.");
+          } catch {
+            toast.error("Não foi possível entrar com Google. Tente novamente.");
+          }
+        },
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular", locale: "pt-BR" });
+    };
+    if (window.google) {
+      mountGoogleButton();
+      return () => { cancelled = true; };
+    }
+    const script = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    script?.addEventListener("load", mountGoogleButton, { once: true });
+    return () => {
+      cancelled = true;
+      script?.removeEventListener("load", mountGoogleButton);
+    };
   }, [view, authIsUnauthorized, queryClient]);
 
   const summaryQuery = useQuery({
