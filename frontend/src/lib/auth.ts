@@ -1,7 +1,3 @@
-export interface GoogleSessionExchange {
-  session_id: string;
-}
-
 export interface MuralUnlockRequest {
   password: string;
 }
