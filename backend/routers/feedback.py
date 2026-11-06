@@ -3,9 +3,6 @@ from fastapi import APIRouter, Depends
 from lib.db import db
 from models.auth import AuthUser
 from models.feedback import (
-    FeedbackAdminItem,
-    FeedbackBulkDelete,
-    FeedbackDeleteResult,
     FeedbackCreate,
     FeedbackCriteriaAverages,
     FeedbackReceipt,
@@ -15,7 +12,7 @@ from models.feedback import (
     new_feedback_id,
     utc_now,
 )
-from routers.auth import require_mural_access, require_owner
+from routers.auth import require_mural_access
 
 router = APIRouter()
 
@@ -96,26 +93,3 @@ async def get_feedback_summary(
         rating_counts=rating_counts,
         suggestions=suggestions,
     )
-
-
-@router.get("/feedback/manage", response_model=list[FeedbackAdminItem])
-async def list_feedback_for_owner(
-    _: AuthUser = Depends(require_owner),
-) -> list[FeedbackAdminItem]:
-    """Return individual anonymous feedback entries for the owner to curate."""
-    documents = await db.feedback.find(
-        {},
-        {"_id": 0},
-    ).sort("created_at", -1).to_list(1000)
-    return [FeedbackAdminItem(**document) for document in documents]
-
-
-@router.post("/feedback/delete-selected", response_model=FeedbackDeleteResult)
-async def delete_selected_feedback(
-    payload: FeedbackBulkDelete,
-    _: AuthUser = Depends(require_owner),
-) -> FeedbackDeleteResult:
-    """Permanently remove selected feedback entries from the results."""
-    unique_ids = list(dict.fromkeys(payload.ids))
-    result = await db.feedback.delete_many({"id": {"$in": unique_ids}})
-    return FeedbackDeleteResult(deleted_count=result.deleted_count)
