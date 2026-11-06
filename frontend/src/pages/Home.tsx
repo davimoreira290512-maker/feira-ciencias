@@ -25,6 +25,7 @@ import { endSession } from "@/lib/session";
 import MuralMessages from "@/components/MuralMessages";
 import type { UnreadCount } from "@/lib/mural";
 import OwnerPasswordCard from "@/components/OwnerPasswordCard";
+import FeedbackManager from "@/components/FeedbackManager";
 
 const ratings = [
   { value: 1, label: "Horrível", face: "😡", color: "rose" },
@@ -721,7 +722,12 @@ export default function Home() {
 
             <MuralMessages me={authQuery.data} people={authorizedUsersQuery.data ?? []} />
 
-            {authQuery.data.is_owner && <OwnerPasswordCard />}
+            {authQuery.data.is_owner && (
+              <>
+                <OwnerPasswordCard />
+                <FeedbackManager />
+              </>
+            )}
             {summaryQuery.isLoading && (
               <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600" data-testid="mural-loading">
                 Carregando avaliações…
