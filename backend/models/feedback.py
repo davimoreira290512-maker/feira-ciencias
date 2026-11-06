@@ -46,21 +46,3 @@ def new_feedback_id() -> str:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-class FeedbackAdminItem(BaseModel):
-    id: str
-    rating: int
-    decoration_rating: int
-    information_rating: int
-    project_name: str
-    suggestion: str
-    created_at: datetime
-
-
-class FeedbackBulkDelete(BaseModel):
-    ids: list[str] = Field(min_length=1, max_length=500)
-
-
-class FeedbackDeleteResult(BaseModel):
-    deleted_count: int
