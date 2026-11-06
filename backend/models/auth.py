@@ -3,16 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class GoogleSessionExchange(BaseModel):
-    session_id: str = Field(min_length=1)
-
-
-class GoogleSessionData(BaseModel):
-    id: str
-    email: str
-    name: str
-    picture: str | None = None
-    session_token: str
+class GoogleCredentialExchange(BaseModel):
+    credential: str = Field(min_length=1, max_length=8192)
 
 
 class AuthUser(BaseModel):
