@@ -2,7 +2,13 @@ interface Env {
   API_ORIGIN: string;
 }
 
-export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
+export const onRequest = async ({
+  request,
+  env,
+}: {
+  request: Request;
+  env: Env;
+}): Promise<Response> => {
   if (!env.API_ORIGIN) {
     return new Response("API_ORIGIN is not configured.", { status: 503 });
   }
