@@ -41,6 +41,11 @@ const GOOGLE_SCRIPT_ID = "google-identity-services";
 
 export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
+  const onCredentialRef = useRef(onCredential);
+
+  useEffect(() => {
+    onCredentialRef.current = onCredential;
+  }, []);
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -53,7 +58,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: (response) => {
-          if (response.credential) onCredential(response.credential);
+          if (response.credential) onCredentialRef.current(response.credential);
         },
       });
       window.google.accounts.id.renderButton(buttonRef.current, {
