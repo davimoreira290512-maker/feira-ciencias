@@ -21,7 +21,8 @@ import type {
   FeedbackSummary,
 } from "@/lib/feedback";
 import { Toaster } from "@/components/ui/sonner";
-import { endSession } from "@/lib/session";
+import { beginSession, endSession } from "@/lib/session";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 import MuralMessages from "@/components/MuralMessages";
 import type { UnreadCount } from "@/lib/mural";
 import OwnerPasswordCard from "@/components/OwnerPasswordCard";
@@ -162,10 +163,18 @@ export default function Home() {
     unlockMural.mutate({ password: accessPassword });
   }
 
-  function loginWithGoogle() {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = `${window.location.origin}/?view=mural`;
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  async function handleGoogleCredential(credential: string) {
+    try {
+      const user = await apiPost<AuthUser>("/auth/google", { credential });
+      beginSession();
+      queryClient.setQueryData(["auth-me"], user);
+    } catch (error) {
+      const message =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
+      toast.error(typeof message === "string" ? message : "Não foi possível entrar com Google. Tente novamente.");
+    }
   }
 
   async function handleLogout() {
@@ -454,15 +463,9 @@ export default function Home() {
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-700" data-testid="google-login-gate-copy">
                   Entre com sua conta Google e depois digite a senha compartilhada para ver as avaliações e sugestões.
                 </p>
-                <button
-                  className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-slate-900 px-5 font-bold text-white transition-colors duration-200 hover:bg-slate-700"
-                  data-testid="google-login-button"
-                  onClick={loginWithGoogle}
-                  type="button"
-                >
-                  Entrar com Google
-                  <span aria-hidden="true" className="text-lg">G</span>
-                </button>
+                <div className="mt-5" data-testid="google-login-button">
+                  <GoogleSignInButton onCredential={handleGoogleCredential} />
+                </div>
               </div>
             )}
 
