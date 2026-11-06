@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface GoogleCredentialResponse {
   credential: string;
@@ -42,6 +42,7 @@ const GOOGLE_SCRIPT_ID = "google-identity-services";
 export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const onCredentialRef = useRef(onCredential);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
@@ -72,6 +73,17 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
       });
     };
 
+    const handleLoad = () => {
+      if (!active) return;
+      const script = document.getElementById(GOOGLE_SCRIPT_ID) as HTMLScriptElement | null;
+      if (script) script.dataset.loaded = "true";
+      if (window.google) renderGoogleButton();
+      else setLoadError(true);
+    };
+    const handleError = () => {
+      if (active) setLoadError(true);
+    };
+
     if (window.google) {
       renderGoogleButton();
     } else {
@@ -82,11 +94,15 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
         script.src = "https://accounts.google.com/gsi/client";
         script.async = true;
         script.defer = true;
+        script.addEventListener("load", handleLoad, { once: true });
+        script.addEventListener("error", handleError, { once: true });
         document.head.appendChild(script);
+      } else if (script.dataset.loaded === "true") {
+        handleLoad();
+      } else {
+        script.addEventListener("load", handleLoad, { once: true });
+        script.addEventListener("error", handleError, { once: true });
       }
-      script.addEventListener("load", renderGoogleButton);
-      if (script.dataset.loaded === "true") renderGoogleButton();
-      script.addEventListener("error", renderGoogleButton);
     }
 
     return () => {
@@ -102,5 +118,14 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
     );
   }
 
-  return <div aria-label="Entrar com Google" ref={buttonRef} />;
+  return (
+    <>
+      <div aria-label="Entrar com Google" ref={buttonRef} />
+      {loadError && (
+        <p className="text-sm text-amber-800" role="alert">
+          Não foi possível carregar o login Google. Verifique sua conexão e tente novamente.
+        </p>
+      )}
+    </>
+  );
 }
