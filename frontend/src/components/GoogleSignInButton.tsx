@@ -45,7 +45,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
 
   useEffect(() => {
     onCredentialRef.current = onCredential;
-  }, []);
+  }, [onCredential]);
 
   useEffect(() => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
@@ -92,7 +92,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
     return () => {
       active = false;
     };
-  }, [onCredential]);
+  }, []);
 
   if (!import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim()) {
     return (
