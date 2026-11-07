@@ -183,8 +183,16 @@ export default function Home() {
       setSent(true);
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
-    onError: () => {
-      toast.error("Não foi possível enviar agora. Tente novamente em instantes.");
+    onError: (error) => {
+      const detail =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
+      toast.error(
+        typeof detail === "string"
+          ? detail
+          : "Não foi possível enviar agora. Tente novamente em instantes.",
+      );
     },
   });
 
