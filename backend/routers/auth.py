@@ -2,6 +2,7 @@ import asyncio
 import hmac
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -45,7 +46,9 @@ async def _is_owner(email: str) -> bool:
 
 async def _owner_flags(email: str) -> tuple[bool, bool]:
     original = _is_original_owner(email)
-    return original or await _is_owner(email), original
+    if original:
+        return True, True
+    return await _is_owner(email), False
 
 
 async def _password_matches(password: str) -> bool:
@@ -368,7 +371,7 @@ async def grant_mural_owner(
     owner: AuthUser = Depends(require_original_owner),
 ) -> dict:
     email = payload.email.strip().lower()
-    if "@" not in email or email.startswith("@") or email.endswith("@"):
+    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
         raise HTTPException(status_code=422, detail="Informe um e-mail válido.")
     if _is_original_owner(email):
         raise HTTPException(status_code=409, detail="Essa pessoa já é o dono original.")
