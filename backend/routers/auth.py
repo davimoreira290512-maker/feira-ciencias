@@ -271,7 +271,7 @@ def _as_utc(value: datetime) -> datetime:
 
 @router.get("/authorized-users", response_model=list[AuthorizedMuralUser])
 async def list_authorized_users(
-    _: AuthUser = Depends(require_owner),
+    _: AuthUser = Depends(require_mural_access),
 ) -> list[AuthorizedMuralUser]:
     docs = await db.users.find(
         {"mural_first_access_at": {"$exists": True}},
