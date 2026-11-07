@@ -14,7 +14,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
-import type { AuthorizedMuralUser, AuthUser, MuralUnlockRequest } from "@/lib/auth";
+import type { AuthorizedMuralUser, AuthUser, MuralOwner, MuralUnlockRequest } from "@/lib/auth";
 import type {
   FeedbackCreate,
   FeedbackReceipt,
@@ -65,6 +65,8 @@ export default function Home() {
   const [accessPassword, setAccessPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [pendingOwnerRemoval, setPendingOwnerRemoval] = useState<string | null>(null);
 
   const authQuery = useQuery({
     queryKey: ["auth-me"],
@@ -103,14 +105,50 @@ export default function Home() {
       authQuery.data?.mural_unlocked === true,
   });
 
+  const ownersQuery = useQuery({
+    queryKey: ["mural-owners"],
+    queryFn: () => apiGet<MuralOwner[]>("/auth/owners"),
+    retry: 1,
+    enabled: view === "mural" && authQuery.data?.is_owner === true && authQuery.data?.mural_unlocked === true,
+  });
+
   const removeAccess = useMutation({
     mutationFn: (userId: string) => apiDelete<void>(`/auth/authorized-users/${userId}`),
     onSuccess: async () => {
       setPendingRemoval(null);
       await queryClient.invalidateQueries({ queryKey: ["authorized-users"] });
-      toast.success("Acesso removido. A pessoa vai precisar da senha de novo.");
+      toast.success("Pessoa bloqueada. Ela não poderá voltar apenas digitando a senha.");
     },
     onError: () => toast.error("Não foi possível remover o acesso."),
+  });
+
+  const authorizeAccess = useMutation({
+    mutationFn: (userId: string) => apiPost<void>(`/auth/authorized-users/${userId}/authorize`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["authorized-users"] });
+      toast.success("Acesso autorizado novamente. A pessoa poderá entrar com a senha do mural.");
+    },
+    onError: () => toast.error("Não foi possível autorizar essa pessoa."),
+  });
+
+  const grantOwner = useMutation({
+    mutationFn: (email: string) => apiPost<MuralOwner>("/auth/owners", { email }),
+    onSuccess: async () => {
+      setOwnerEmail("");
+      await queryClient.invalidateQueries({ queryKey: ["mural-owners"] });
+      toast.success("Permissão de dono concedida.");
+    },
+    onError: () => toast.error("Não foi possível conceder essa permissão. Verifique o e-mail."),
+  });
+
+  const revokeOwner = useMutation({
+    mutationFn: (email: string) => apiDelete<void>(`/auth/owners/${encodeURIComponent(email)}`),
+    onSuccess: async () => {
+      setPendingOwnerRemoval(null);
+      await queryClient.invalidateQueries({ queryKey: ["mural-owners"] });
+      toast.success("Permissão de dono removida.");
+    },
+    onError: () => toast.error("Não foi possível remover essa permissão."),
   });
 
   const unlockMural = useMutation({
@@ -125,9 +163,13 @@ export default function Home() {
       toast.success("Acesso ao mural liberado.");
     },
     onError: (error) => {
+      const detail =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
       setPasswordError(
-        error instanceof ApiError && error.status === 403
-          ? "A senha do mural está incorreta."
+        typeof detail === "string"
+          ? detail
           : "Não foi possível verificar a senha. Tente novamente.",
       );
     },
@@ -679,7 +721,13 @@ export default function Home() {
                               Dono
                             </span>
                           )}
-                          {authQuery.data?.is_owner && !person.is_owner && (
+                          {person.access_revoked && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">Bloqueado</span>}
+                          {authQuery.data?.is_owner && !person.is_owner && person.access_revoked && (
+                            <button className="min-h-9 rounded-lg border border-teal-200 px-3 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:opacity-50" disabled={authorizeAccess.isPending} onClick={() => authorizeAccess.mutate(person.user_id)} type="button">
+                              Autorizar novamente
+                            </button>
+                          )}
+                          {authQuery.data?.is_owner && !person.is_owner && !person.access_revoked && (
                             pendingRemoval === person.user_id ? (
                               <span className="flex items-center gap-2">
                                 <button
@@ -722,6 +770,50 @@ export default function Home() {
                 )
               )}
             </div>
+
+            {authQuery.data.is_owner && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" data-testid="mural-owner-management">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck aria-hidden="true" className="size-5 text-teal-700" />
+                  <h3 className="font-heading text-lg font-bold text-slate-900">Gerenciar donos</h3>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  Donos podem administrar o mural e avaliações. Somente o dono original pode conceder ou retirar essa permissão.
+                </p>
+                {ownersQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Carregando donos…</p>}
+                {ownersQuery.isError && <p className="mt-3 text-sm text-amber-800">Não foi possível carregar a lista de donos.</p>}
+                {ownersQuery.data && (
+                  <ul className="mt-3 divide-y divide-slate-100">
+                    {ownersQuery.data.map((person) => (
+                      <li key={person.email} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{person.email}</p>
+                          <p className="text-xs text-slate-500">{person.is_original ? "Dono original — não pode ser removido" : "Dono delegado"}</p>
+                        </div>
+                        {authQuery.data.is_original_owner && !person.is_original && (
+                          pendingOwnerRemoval === person.email ? (
+                            <span className="flex items-center gap-2">
+                              <button className="min-h-9 rounded-lg bg-rose-700 px-3 text-xs font-bold text-white disabled:bg-slate-300" disabled={revokeOwner.isPending} onClick={() => revokeOwner.mutate(person.email)} type="button">
+                                {revokeOwner.isPending ? "Removendo…" : "Confirmar"}
+                              </button>
+                              <button className="min-h-9 rounded-lg px-3 text-xs font-semibold text-slate-600" onClick={() => setPendingOwnerRemoval(null)} type="button">Cancelar</button>
+                            </span>
+                          ) : (
+                            <button className="min-h-9 rounded-lg border border-rose-200 px-3 text-xs font-bold text-rose-700 hover:bg-rose-50" onClick={() => setPendingOwnerRemoval(person.email)} type="button">Remover dono</button>
+                          )
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {authQuery.data.is_original_owner && (
+                  <form className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row" onSubmit={(event) => { event.preventDefault(); if (ownerEmail.trim()) grantOwner.mutate(ownerEmail.trim()); }}>
+                    <input aria-label="E-mail Google do novo dono" className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm" type="email" placeholder="E-mail da conta Google" value={ownerEmail} onChange={(event) => setOwnerEmail(event.target.value)} required />
+                    <button className="min-h-11 rounded-lg bg-teal-700 px-4 text-sm font-bold text-white disabled:bg-slate-300" disabled={!ownerEmail.trim() || grantOwner.isPending} type="submit">{grantOwner.isPending ? "Concedendo…" : "Tornar dono"}</button>
+                  </form>
+                )}
+              </section>
+            )}
 
             <MuralMessages me={authQuery.data} people={authorizedUsersQuery.data ?? []} />
 
