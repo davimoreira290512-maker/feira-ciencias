@@ -28,6 +28,12 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("user_id", ASCENDING)], name="user_id", unique=True),
         IndexModel([("mural_last_access_at", DESCENDING)], name="mural_last_access_desc"),
     ],
+    "mural_owners": [
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
+    ],
+    "mural_access_revocations": [
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
+    ],
     "mural_photos": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("message_id", ASCENDING)], name="message_id"),

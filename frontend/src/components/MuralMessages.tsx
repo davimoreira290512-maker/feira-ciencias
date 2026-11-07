@@ -46,7 +46,7 @@ export default function MuralMessages({ me, people }: MuralMessagesProps) {
   // even though later polls (which already count as "read") return them with is_new = false.
   const [newIds, setNewIds] = useState<ReadonlySet<string>>(new Set());
 
-  const others = people.filter((person) => person.user_id !== me.user_id);
+  const others = people.filter((person) => person.user_id !== me.user_id && !person.access_revoked);
   const labels: Record<string, string> = { [EVERYONE]: "Todos do mural" };
   for (const person of others) labels[person.user_id] = person.name;
   // A recipient who lost access falls back to "everyone".
