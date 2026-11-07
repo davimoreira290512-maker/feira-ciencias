@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from pymongo.errors import DuplicateKeyError
 
 from lib.db import db
@@ -13,9 +16,19 @@ from models.feedback import (
     new_feedback_id,
     utc_now,
 )
-from routers.auth import optional_mural_user, require_mural_access
+from routers.auth import optional_mural_user, require_mural_access, require_owner
 
 router = APIRouter()
+
+
+class FeedbackAdminItem(BaseModel):
+    id: str
+    rating: int
+    decoration_rating: int
+    information_rating: int
+    project_name: str
+    suggestion: str
+    created_at: datetime
 
 
 @router.post("/feedback", response_model=FeedbackReceipt)
@@ -118,3 +131,36 @@ async def get_feedback_summary(
         rating_counts=rating_counts,
         suggestions=suggestions,
     )
+
+
+@router.get("/feedback/manage", response_model=list[FeedbackAdminItem])
+async def list_feedback_for_owner(
+    _: AuthUser = Depends(require_owner),
+) -> list[FeedbackAdminItem]:
+    """Return individual anonymous evaluations only to the mural owner."""
+    documents = await db.feedback.find(
+        {},
+        {
+            "_id": 0,
+            "id": 1,
+            "rating": 1,
+            "decoration_rating": 1,
+            "information_rating": 1,
+            "project_name": 1,
+            "suggestion": 1,
+            "created_at": 1,
+        },
+    ).sort("created_at", -1).to_list(500)
+    return [FeedbackAdminItem(**document) for document in documents]
+
+
+@router.delete("/feedback/{feedback_id}", status_code=204)
+async def delete_feedback(
+    feedback_id: str,
+    _: AuthUser = Depends(require_owner),
+):
+    """Permanently delete one evaluation; the owner check is enforced server-side."""
+    result = await db.feedback.delete_one({"id": feedback_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Avaliação não encontrada.")
+    return None
