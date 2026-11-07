@@ -372,6 +372,9 @@ async def grant_mural_owner(
         {"$setOnInsert": {"email": email, "granted_by": owner.email, "created_at": now}},
         upsert=True,
     )
+    # If this email had been blocked as a participant, promotion explicitly restores its access.
+    await db.mural_access_revocations.delete_one({"email": email})
+    await db.users.update_one({"email": email}, {"$unset": {"mural_access_revoked_at": ""}})
     return {"email": email, "is_original": False, "granted_by": owner.email, "created_at": now}
 
 
