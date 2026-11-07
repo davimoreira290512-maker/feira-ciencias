@@ -371,7 +371,7 @@ async def grant_mural_owner(
     owner: AuthUser = Depends(require_original_owner),
 ) -> dict:
     email = payload.email.strip().lower()
-    if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
         raise HTTPException(status_code=422, detail="Informe um e-mail válido.")
     if _is_original_owner(email):
         raise HTTPException(status_code=409, detail="Essa pessoa já é o dono original.")
