@@ -18,6 +18,7 @@ from models.auth import (
     AuthorizedMuralUser,
     AuthUser,
     GoogleCredentialExchange,
+    MuralOwnerGrant,
     MuralPasswordChange,
     MuralUnlockRequest,
 )
