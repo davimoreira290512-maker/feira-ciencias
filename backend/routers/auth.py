@@ -98,12 +98,18 @@ async def get_session_context(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Conta não encontrada.")
 
     is_owner, is_original_owner = await _owner_flags(user["email"])
+    is_revoked = bool(
+        await db.mural_access_revocations.find_one(
+            {"email": user["email"].strip().lower()},
+            {"_id": 1},
+        )
+    )
     auth_user = AuthUser(
         user_id=user["user_id"],
         email=user["email"],
         name=user["name"],
         picture=user.get("picture"),
-        mural_unlocked=bool(session.get("mural_unlocked", False)),
+        mural_unlocked=bool(session.get("mural_unlocked", False)) and not is_revoked,
         is_owner=is_owner,
         is_original_owner=is_original_owner,
     )
