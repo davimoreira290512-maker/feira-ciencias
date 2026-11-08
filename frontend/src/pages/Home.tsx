@@ -29,19 +29,21 @@ import OwnerPasswordCard from "@/components/OwnerPasswordCard";
 import OwnerFeedbackManager from "@/components/OwnerFeedbackManager";
 
 const ratings = [
-  { value: 1, label: "Horrível", face: "😡", color: "rose" },
-  { value: 2, label: "Ruim", face: "🙁", color: "orange" },
-  { value: 3, label: "Regular", face: "😐", color: "yellow" },
-  { value: 4, label: "Bom", face: "😊", color: "emerald" },
-  { value: 5, label: "Incrível", face: "🤩", color: "sky" },
+  { value: 1, label: "Muito confuso", face: "😡", color: "rose" },
+  { value: 2, label: "Confuso", face: "🙁", color: "orange" },
+  { value: 3, label: "Razoável", face: "😐", color: "yellow" },
+  { value: 4, label: "Claro", face: "😊", color: "emerald" },
+  { value: 5, label: "Muito claro", face: "🤩", color: "sky" },
 ] as const;
 
 const ratingQuestions = [
-  { key: "decoration", label: "Como estava a decoração da feira?" },
-  { key: "presentation", label: "Como estava a apresentação da feira?" },
   {
-    key: "information",
-    label: "Como estava a quantidade de informações apresentadas?",
+    key: "clarity",
+    label: "O grupo explicou de forma clara e fácil de entender?",
+  },
+  {
+    key: "visuals",
+    label: "Os materiais visuais apresentados ajudaram no seu entendimento?",
   },
 ] as const;
 
@@ -56,9 +58,8 @@ export default function Home() {
   const [selectedRatings, setSelectedRatings] = useState<
     Record<RatingQuestionKey, number | null>
   >({
-    decoration: null,
-    presentation: null,
-    information: null,
+    clarity: null,
+    visuals: null,
   });
   const [suggestion, setSuggestion] = useState("");
   const [sent, setSent] = useState(false);
@@ -198,12 +199,13 @@ export default function Home() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const { decoration, presentation, information } = selectedRatings;
-    if (decoration === null || presentation === null || information === null) return;
+    const { clarity, visuals } = selectedRatings;
+    if (clarity === null || visuals === null) return;
     submitFeedback.mutate({
-      rating: presentation,
-      decoration_rating: decoration,
-      information_rating: information,
+      rating: clarity,
+      // Keep the existing API fields compatible while the form uses the two new criteria.
+      decoration_rating: clarity,
+      information_rating: visuals,
       suggestion,
     });
   }
@@ -234,9 +236,8 @@ export default function Home() {
 
   function startNewFeedback() {
     setSelectedRatings({
-      decoration: null,
-      presentation: null,
-      information: null,
+      clarity: null,
+      visuals: null,
     });
     setSuggestion("");
     setSent(false);
