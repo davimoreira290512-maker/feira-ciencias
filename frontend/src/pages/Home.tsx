@@ -91,6 +91,16 @@ export default function Home() {
     staleTime: 30_000,
   });
 
+  const feedbackStatusQuery = useQuery({
+    queryKey: ["feedback-status"],
+    queryFn: () =>
+      apiGet<{ already_submitted: boolean; can_repeat: boolean }>("/feedback/status"),
+    enabled: view === "form",
+    retry: 1,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
     queryFn: () => apiGet<FeedbackSummary>("/feedback/summary"),
@@ -195,7 +205,14 @@ export default function Home() {
       apiPost<FeedbackReceipt>("/feedback", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["feedback-summary"] });
-      setSent(true);
+      await queryClient.invalidateQueries({ queryKey: ["feedback-status"] });
+      if (feedbackStatusQuery.data?.can_repeat === true) {
+        setSelectedRatings({ clarity: null, visuals: null });
+        setSuggestion("");
+        setSent(false);
+      } else {
+        setSent(true);
+      }
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
     onError: (error) => {
@@ -248,16 +265,6 @@ export default function Home() {
     await endSession("/?view=mural");
   }
 
-  function startNewFeedback() {
-    setSelectedRatings({
-      clarity: null,
-      visuals: null,
-    });
-    setSuggestion("");
-    setSent(false);
-    setView("form");
-  }
-
   const summary = summaryQuery.data;
   const authIsUnauthorized =
     authQuery.error instanceof ApiError && authQuery.error.status === 401;
@@ -290,7 +297,7 @@ export default function Home() {
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-avaliar"
-            onClick={() => setView("form")}
+            onClick={() => { setView("form"); void queryClient.invalidateQueries({ queryKey: ["feedback-status"] }); }}
             type="button"
           >
             <Sparkles aria-hidden="true" className="size-4" />
@@ -322,7 +329,22 @@ export default function Home() {
         </nav>
 
         {view === "form" && (
-          sent ? (
+          feedbackStatusQuery.isLoading ? (
+            <section className="rounded-3xl border border-slate-200 bg-white p-7 text-sm text-slate-600 shadow-sm" data-testid="feedback-status-loading">
+              Verificando se você já enviou uma avaliação…
+            </section>
+          ) : feedbackStatusQuery.isError ? (
+            <section className="rounded-3xl border border-amber-200 bg-amber-50 p-7 text-sm text-amber-950" data-testid="feedback-status-error">
+              Não foi possível verificar se você já enviou uma avaliação. Tente novamente.
+              <button
+                className="mt-4 block min-h-11 rounded-lg bg-amber-900 px-4 font-bold text-white"
+                onClick={() => void feedbackStatusQuery.refetch()}
+                type="button"
+              >
+                Tentar novamente
+              </button>
+            </section>
+          ) : sent || feedbackStatusQuery.data?.already_submitted ? (
             <section
               className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-7 shadow-sm sm:p-9"
               data-testid="feedback-success-card"
@@ -331,20 +353,11 @@ export default function Home() {
                 <span aria-hidden="true">🌱</span>
               </div>
               <h2 className="font-heading text-2xl font-bold text-slate-900" data-testid="feedback-success-message">
-                Obrigado por compartilhar!
+                Você já enviou sua avaliação!
               </h2>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600" data-testid="feedback-success-description">
-                Sua avaliação anônima já ajuda a próxima apresentação a ficar ainda melhor.
+                Cada visitante pode enviar apenas uma avaliação. Obrigado por participar!
               </p>
-              <button
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
-                data-testid="new-feedback-button"
-                onClick={startNewFeedback}
-                type="button"
-              >
-                Avaliar outra apresentação
-                <Sparkles aria-hidden="true" className="size-4" />
-              </button>
             </section>
           ) : (
             <form
