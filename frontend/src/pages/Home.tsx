@@ -887,8 +887,13 @@ export default function Home() {
           </section>
         )}
 
-        <footer className="mt-8 flex items-center gap-2 border-t border-slate-200 pt-5 text-xs text-slate-500" data-testid="feedback-footer">
-          <span aria-hidden="true">🔬</span>
+        <footer className="mt-8 flex flex-col items-center gap-3 border-t border-slate-200 pt-6 text-center text-xs text-slate-500" data-testid="feedback-footer">
+          <img
+            src="/pmmg-crest.png"
+            alt="Brasão do Colégio Tiradentes da Polícia Militar de Minas Gerais"
+            className="h-14 w-14 shrink-0 object-contain sm:h-16 sm:w-16"
+            loading="lazy"
+          />
           <p data-testid="footer-copy">Feito para a ciência aprender com cada encontro.</p>
         </footer>
       </div>
