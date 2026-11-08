@@ -282,6 +282,10 @@ export default function Home() {
             className="relative left-1/2 block h-full w-[300%] max-w-none -translate-x-1/2 object-cover sm:left-0 sm:h-auto sm:w-full sm:translate-x-0"
           />
           <div
+            aria-hidden="true"
+            className="absolute left-1/2 top-[1%] z-[9] aspect-square w-[25%] max-w-[76px] -translate-x-1/2 rounded-xl bg-[#211f1b]"
+          />
+          <div
             aria-label="Logo do Colégio Tiradentes"
             className="absolute left-1/2 top-[3%] z-10 w-[43%] max-w-[230px] -translate-x-1/2"
             role="img"
