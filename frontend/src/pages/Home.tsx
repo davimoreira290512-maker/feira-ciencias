@@ -465,18 +465,20 @@ export default function Home() {
               </div>
 
               <div className="mt-7">
-                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800" htmlFor="suggestion" data-testid="suggestion-label">
+                <label className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-800" htmlFor="suggestion" data-testid="suggestion-label">
                   <MessageCircle aria-hidden="true" className="size-4 text-teal-700" />
-                  Uma sugestão para a próxima vez?
-                  <span className="font-normal text-slate-500">(opcional)</span>
+                  Deixe seu Feedback
                 </label>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  Tem alguma sugestão, elogio ou comentário para o nosso grupo? Conte para a gente! (Opcional)
+                </p>
                 <textarea
                   className="min-h-28 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-relaxed text-slate-900 outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-slate-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
                   data-testid="suggestion-textarea"
                   id="suggestion"
                   maxLength={280}
                   onChange={(event) => setSuggestion(event.target.value)}
-                  placeholder="Deixe uma dica amiga para os estudantes brilharem na próxima!"
+                  placeholder="Digite seu feedback aqui..."
                   value={suggestion}
                 />
                 <p className="mt-1 text-right text-xs text-slate-500" data-testid="suggestion-character-count">
