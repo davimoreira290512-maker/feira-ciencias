@@ -333,9 +333,6 @@ export default function Home() {
               className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-7 shadow-sm sm:p-9"
               data-testid="feedback-success-card"
             >
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-100 text-3xl">
-                <img src="/pmmg-crest.png" alt="Brasão da Polícia Militar de Minas Gerais" className="size-11 object-contain" />
-              </div>
               <h2 className="font-heading text-2xl font-bold text-slate-900" data-testid="feedback-success-message">
                 Você já enviou sua avaliação!
               </h2>
