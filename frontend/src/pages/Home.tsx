@@ -286,7 +286,7 @@ export default function Home() {
             aria-current={view === "form" ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors duration-200 ${
               view === "form"
-                ? "bg-teal-700 text-white shadow-sm"
+                ? "bg-[#201F1B] text-white shadow-sm"
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-avaliar"
@@ -300,7 +300,7 @@ export default function Home() {
             aria-current={view === "mural" ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors duration-200 ${
               view === "mural"
-                ? "bg-teal-700 text-white shadow-sm"
+                ? "bg-[#201F1B] text-white shadow-sm"
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-mural"
