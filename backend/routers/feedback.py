@@ -27,6 +27,31 @@ ANONYMOUS_FEEDBACK_COOKIE = "feedback_visitor"
 ANONYMOUS_FEEDBACK_COOKIE_SECONDS = 365 * 24 * 60 * 60
 
 
+class FeedbackStatus(BaseModel):
+    already_submitted: bool
+    can_repeat: bool
+
+
+@router.get("/feedback/status", response_model=FeedbackStatus)
+async def get_feedback_status(
+    request: Request,
+    mural_user: AuthUser | None = Depends(optional_mural_user),
+) -> FeedbackStatus:
+    # People with authorized mural access are explicitly allowed to submit again.
+    if mural_user is not None:
+        return FeedbackStatus(already_submitted=False, can_repeat=True)
+
+    visitor_token = request.cookies.get(ANONYMOUS_FEEDBACK_COOKIE)
+    if not visitor_token:
+        return FeedbackStatus(already_submitted=False, can_repeat=False)
+
+    visitor_hash = hashlib.sha256(visitor_token.encode("utf-8")).hexdigest()
+    already_submitted = await db.feedback_visitor_claims.find_one(
+        {"visitor_hash": visitor_hash}, {"_id": 1}
+    ) is not None
+    return FeedbackStatus(already_submitted=already_submitted, can_repeat=False)
+
+
 @router.post("/feedback", response_model=FeedbackReceipt)
 async def create_feedback(
     payload: FeedbackCreate,
@@ -101,7 +126,7 @@ async def create_feedback(
             max_age=ANONYMOUS_FEEDBACK_COOKIE_SECONDS,
             httponly=True,
             secure=True,
-            samesite="lax",
+            samesite="none",
             path="/",
         )
 
