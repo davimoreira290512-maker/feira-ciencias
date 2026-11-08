@@ -277,7 +277,7 @@ export default function Home() {
           data-testid="feedback-header-image"
         >
           <img
-            src="/image.png"
+            src="/cabecalho_com_emblema_ctpm.png"
             alt="Cabeçalho da Feira de Ciências 2026 do Colégio Tiradentes."
             className="block h-auto w-full"
           />
