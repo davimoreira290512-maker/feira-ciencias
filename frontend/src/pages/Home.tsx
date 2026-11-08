@@ -266,49 +266,13 @@ export default function Home() {
     <div className="min-h-svh bg-[#FAF9F5] text-slate-900">
       <Toaster />
       <div className="mx-auto w-full max-w-3xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-        <header className="flex items-center justify-between gap-3" data-testid="feedback-header">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex size-11 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-sm"
-              data-testid="science-fair-mark"
-            >
-              <FlaskConical aria-hidden="true" className="size-5" />
-            </span>
-            <div>
-              <p className="font-heading text-sm font-bold text-teal-800" data-testid="brand-name">
-                Feira de Ciências
-              </p>
-              <p className="text-xs text-slate-500" data-testid="brand-tagline">
-                Toda ideia merece ser ouvida
-              </p>
-            </div>
-          </div>
-          <div
-            className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900"
-            data-testid="anonymous-header-badge"
-          >
-            <LockKeyhole aria-hidden="true" className="size-3.5" />
-            100% anônimo
-          </div>
-        </header>
-
-        <section className="mb-6 mt-8 max-w-2xl" data-testid="intro-section">
-          <p
-            className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-teal-700"
-            data-testid="intro-eyebrow"
-          >
-            Ciência cresce com boas ideias
-          </p>
-          <h1
-            className="font-heading text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl"
-            data-testid="intro-title"
-          >
-            Como foi a apresentação?
-          </h1>
-          <p className="mt-3 text-base leading-relaxed text-slate-600" data-testid="intro-description">
-            Sua opinião ajuda os estudantes a brilharem ainda mais na próxima vez.
-          </p>
-        </section>
+        <div className="mb-6 mt-5" data-testid="feedback-header-image">
+          <img
+            src="/tiradentes-header.jpg"
+            alt="Toda ideia merece ser ouvida. 100% anônimo. Ciência cresce com boas ideias. Como foi a apresentação? Sua opinião ajuda os estudantes a brilharem ainda mais na próxima vez."
+            className="block h-auto w-full rounded-2xl object-contain"
+          />
+        </div>
 
         <nav
           aria-label="Seções da feira"
