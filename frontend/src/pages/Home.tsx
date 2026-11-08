@@ -94,7 +94,6 @@ export default function Home() {
   const hasSubmittedCookie = () =>
     document.cookie.split(";").some((cookie) => cookie.trim() === "feedback_submitted=1");
 
-
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
     queryFn: () => apiGet<FeedbackSummary>("/feedback/summary"),
