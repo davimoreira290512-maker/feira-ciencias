@@ -86,10 +86,13 @@ export default function Home() {
   const authQuery = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => apiGet<AuthUser>("/auth/me"),
-    enabled: view === "mural",
+    enabled: true,
     retry: false,
     staleTime: 30_000,
   });
+
+  const hasSubmittedCookie = () =>
+    document.cookie.split(";").some((cookie) => cookie.trim() === "feedback_submitted=1");
 
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
@@ -195,10 +198,23 @@ export default function Home() {
       apiPost<FeedbackReceipt>("/feedback", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["feedback-summary"] });
-      setSent(true);
+      const auth = await authQuery.refetch();
+      if (auth.data?.mural_unlocked === true) {
+        setSelectedRatings({ clarity: null, visuals: null });
+        setSuggestion("");
+        setSent(false);
+      } else {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
+        setSent(true);
+      }
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
     onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
+        setSent(true);
+        return;
+      }
       const detail =
         error instanceof ApiError && typeof error.body === "object" && error.body
           ? (error.body as { detail?: unknown }).detail
@@ -246,16 +262,6 @@ export default function Home() {
 
   async function handleLogout() {
     await endSession("/?view=mural");
-  }
-
-  function startNewFeedback() {
-    setSelectedRatings({
-      clarity: null,
-      visuals: null,
-    });
-    setSuggestion("");
-    setSent(false);
-    setView("form");
   }
 
   const summary = summaryQuery.data;
@@ -322,29 +328,17 @@ export default function Home() {
         </nav>
 
         {view === "form" && (
-          sent ? (
+          (sent || hasSubmittedCookie()) && authQuery.data?.mural_unlocked !== true ? (
             <section
               className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-7 shadow-sm sm:p-9"
               data-testid="feedback-success-card"
             >
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-100 text-3xl">
-                <span aria-hidden="true">🌱</span>
-              </div>
               <h2 className="font-heading text-2xl font-bold text-slate-900" data-testid="feedback-success-message">
-                Obrigado por compartilhar!
+                Você já enviou sua avaliação!
               </h2>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600" data-testid="feedback-success-description">
-                Sua avaliação anônima já ajuda a próxima apresentação a ficar ainda melhor.
+                Cada visitante pode enviar apenas uma avaliação. Obrigado por participar!
               </p>
-              <button
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
-                data-testid="new-feedback-button"
-                onClick={startNewFeedback}
-                type="button"
-              >
-                Avaliar outra apresentação
-                <Sparkles aria-hidden="true" className="size-4" />
-              </button>
             </section>
           ) : (
             <form
