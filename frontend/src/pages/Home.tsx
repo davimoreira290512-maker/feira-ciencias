@@ -895,7 +895,7 @@ export default function Home() {
             <button
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
               data-testid="mural-back-to-form-button"
-              onClick={() => setView("form")}
+              onClick={() => { setView("form"); void queryClient.invalidateQueries({ queryKey: ["feedback-status"] }); }}
               type="button"
             >
               <Sparkles aria-hidden="true" className="size-4" />
