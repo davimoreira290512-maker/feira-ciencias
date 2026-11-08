@@ -273,7 +273,7 @@ export default function Home() {
       <Toaster />
       <div className="mx-auto w-full max-w-3xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
         <div
-          className="mb-6 mt-5 aspect-[0.9] overflow-hidden rounded-2xl bg-[#211f1b] sm:aspect-[2.69]"
+          className="relative mb-6 mt-5 aspect-[0.9] overflow-hidden rounded-2xl bg-[#211f1b] sm:aspect-[2.69]"
           data-testid="feedback-header-image"
         >
           <img
@@ -281,6 +281,19 @@ export default function Home() {
             alt="Identidade visual do Colégio Tiradentes para a Feira de Ciências 2026."
             className="relative left-1/2 block h-full w-[300%] max-w-none -translate-x-1/2 object-cover sm:left-0 sm:h-auto sm:w-full sm:translate-x-0"
           />
+          <div
+            aria-label="Logo do Colégio Tiradentes"
+            className="absolute left-1/2 top-[3%] z-10 w-[43%] max-w-[230px] -translate-x-1/2"
+            role="img"
+          >
+            <svg viewBox="0 0 450 220" className="h-auto w-full drop-shadow-sm" xmlns="http://www.w3.org/2000/svg">
+              <path d="M190 28 A92 92 0 1 0 190 192" fill="none" stroke="#10145f" strokeWidth="15" />
+              <path d="M181 42 A78 78 0 1 0 181 178" fill="none" stroke="#f4d51d" strokeWidth="12" />
+              <path d="M174 55 A64 64 0 1 0 174 165" fill="none" stroke="#d92d36" strokeWidth="10" />
+              <text x="205" y="103" fill="#10145f" fontFamily="Arial, sans-serif" fontSize="55" fontWeight="900" letterSpacing="-2">COLÉGIO</text>
+              <text x="205" y="159" fill="#10145f" fontFamily="Arial, sans-serif" fontSize="55" fontWeight="900" letterSpacing="-2">TIRADENTES</text>
+            </svg>
+          </div>
         </div>
 
         <nav
