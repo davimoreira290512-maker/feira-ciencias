@@ -308,7 +308,7 @@ export default function Home() {
             type="button"
           >
             <BarChart3 aria-hidden="true" className="size-4" />
-            Mural da feira
+            Mural da Feira
             {view !== "mural" && (unreadQuery.data?.count ?? 0) > 0 && (
               <span
                 aria-label={`${unreadQuery.data?.count} mensagens privadas novas`}
