@@ -40,10 +40,24 @@ const ratingQuestions = [
   {
     key: "clarity",
     label: "O grupo explicou de forma clara e fácil de entender?",
+    options: [
+      { value: 1, label: "Muito confuso", face: "😡", color: "rose" },
+      { value: 2, label: "Confuso", face: "🙁", color: "orange" },
+      { value: 3, label: "Razoável", face: "😐", color: "yellow" },
+      { value: 4, label: "Claro", face: "😊", color: "emerald" },
+      { value: 5, label: "Muito claro", face: "🤩", color: "sky" },
+    ],
   },
   {
     key: "visuals",
     label: "Os materiais visuais apresentados ajudaram no seu entendimento?",
+    options: [
+      { value: 1, label: "Não ajudaram", face: "😡", color: "rose" },
+      { value: 2, label: "Ajudaram pouco", face: "🙁", color: "orange" },
+      { value: 3, label: "Neutro", face: "😐", color: "yellow" },
+      { value: 4, label: "Ajudaram", face: "😊", color: "emerald" },
+      { value: 5, label: "Ajudaram muito", face: "🤩", color: "sky" },
+    ],
   },
 ] as const;
 
@@ -393,7 +407,7 @@ export default function Home() {
                       data-testid={`rating-options-${question.key}`}
                       role="radiogroup"
                     >
-                      {ratings.map((option) => {
+                      {question.options.map((option) => {
                         const selected = selectedRatings[question.key] === option.value;
                         const palette = {
                           rose: selected
