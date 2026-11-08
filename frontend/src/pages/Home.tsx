@@ -29,11 +29,11 @@ import OwnerPasswordCard from "@/components/OwnerPasswordCard";
 import OwnerFeedbackManager from "@/components/OwnerFeedbackManager";
 
 const ratings = [
-  { value: 1, label: "Muito confuso", face: "😡", color: "rose" },
-  { value: 2, label: "Confuso", face: "🙁", color: "orange" },
-  { value: 3, label: "Razoável", face: "😐", color: "yellow" },
-  { value: 4, label: "Claro", face: "😊", color: "emerald" },
-  { value: 5, label: "Muito claro", face: "🤩", color: "sky" },
+  { value: 1, label: "Horrível", face: "😡", color: "rose" },
+  { value: 2, label: "Ruim", face: "🙁", color: "orange" },
+  { value: 3, label: "Regular", face: "😐", color: "yellow" },
+  { value: 4, label: "Bom", face: "😊", color: "emerald" },
+  { value: 5, label: "Incrível", face: "🤩", color: "sky" },
 ] as const;
 
 const ratingQuestions = [
