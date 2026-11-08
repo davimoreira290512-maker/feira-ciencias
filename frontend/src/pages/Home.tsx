@@ -86,20 +86,14 @@ export default function Home() {
   const authQuery = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => apiGet<AuthUser>("/auth/me"),
-    enabled: view === "mural",
+    enabled: true,
     retry: false,
     staleTime: 30_000,
   });
 
-  const feedbackStatusQuery = useQuery({
-    queryKey: ["feedback-status"],
-    queryFn: () =>
-      apiGet<{ already_submitted: boolean; can_repeat: boolean }>("/feedback/status"),
-    enabled: view === "form",
-    retry: 1,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-  });
+  const hasSubmittedCookie = () =>
+    document.cookie.split(";").some((cookie) => cookie.trim() === "feedback_submitted=1");
+
 
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
@@ -205,17 +199,23 @@ export default function Home() {
       apiPost<FeedbackReceipt>("/feedback", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["feedback-summary"] });
-      await queryClient.invalidateQueries({ queryKey: ["feedback-status"] });
-      if (feedbackStatusQuery.data?.can_repeat === true) {
+      const auth = await authQuery.refetch();
+      if (auth.data?.mural_unlocked === true) {
         setSelectedRatings({ clarity: null, visuals: null });
         setSuggestion("");
         setSent(false);
       } else {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
         setSent(true);
       }
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
     onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
+        setSent(true);
+        return;
+      }
       const detail =
         error instanceof ApiError && typeof error.body === "object" && error.body
           ? (error.body as { detail?: unknown }).detail
@@ -297,7 +297,7 @@ export default function Home() {
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-avaliar"
-            onClick={() => { setView("form"); void queryClient.invalidateQueries({ queryKey: ["feedback-status"] }); }}
+            onClick={() => setView("form")}
             type="button"
           >
             <Sparkles aria-hidden="true" className="size-4" />
@@ -329,22 +329,7 @@ export default function Home() {
         </nav>
 
         {view === "form" && (
-          feedbackStatusQuery.isLoading ? (
-            <section className="rounded-3xl border border-slate-200 bg-white p-7 text-sm text-slate-600 shadow-sm" data-testid="feedback-status-loading">
-              Verificando se você já enviou uma avaliação…
-            </section>
-          ) : feedbackStatusQuery.isError ? (
-            <section className="rounded-3xl border border-amber-200 bg-amber-50 p-7 text-sm text-amber-950" data-testid="feedback-status-error">
-              Não foi possível verificar se você já enviou uma avaliação. Tente novamente.
-              <button
-                className="mt-4 block min-h-11 rounded-lg bg-amber-900 px-4 font-bold text-white"
-                onClick={() => void feedbackStatusQuery.refetch()}
-                type="button"
-              >
-                Tentar novamente
-              </button>
-            </section>
-          ) : sent || feedbackStatusQuery.data?.already_submitted ? (
+          (sent || hasSubmittedCookie()) && authQuery.data?.mural_unlocked !== true ? (
             <section
               className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-7 shadow-sm sm:p-9"
               data-testid="feedback-success-card"
@@ -895,7 +880,7 @@ export default function Home() {
             <button
               className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
               data-testid="mural-back-to-form-button"
-              onClick={() => { setView("form"); void queryClient.invalidateQueries({ queryKey: ["feedback-status"] }); }}
+              onClick={() => setView("form")}
               type="button"
             >
               <Sparkles aria-hidden="true" className="size-4" />
