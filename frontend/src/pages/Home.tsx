@@ -266,11 +266,14 @@ export default function Home() {
     <div className="min-h-svh bg-[#FAF9F5] text-slate-900">
       <Toaster />
       <div className="mx-auto w-full max-w-3xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-        <div className="mb-6 mt-5" data-testid="feedback-header-image">
+        <div
+          className="mb-6 mt-5 aspect-[0.9] overflow-hidden rounded-2xl bg-[#211f1b] sm:aspect-[2.69]"
+          data-testid="feedback-header-image"
+        >
           <img
             src="/tiradentes-header.jpg"
-            alt="Toda ideia merece ser ouvida. 100% anônimo. Ciência cresce com boas ideias. Como foi a apresentação? Sua opinião ajuda os estudantes a brilharem ainda mais na próxima vez."
-            className="block h-auto w-full rounded-2xl object-contain"
+            alt="Identidade visual do Colégio Tiradentes para a Feira de Ciências 2026."
+            className="relative left-1/2 block h-full w-[300%] max-w-none -translate-x-1/2 object-cover sm:left-0 sm:h-auto sm:w-full sm:translate-x-0"
           />
         </div>
 
