@@ -3,16 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class GoogleSessionExchange(BaseModel):
-    session_id: str = Field(min_length=1)
-
-
-class GoogleSessionData(BaseModel):
-    id: str
-    email: str
-    name: str
-    picture: str | None = None
-    session_token: str
+class GoogleCredentialExchange(BaseModel):
+    credential: str = Field(min_length=1, max_length=8192)
 
 
 class AuthUser(BaseModel):
@@ -22,6 +14,11 @@ class AuthUser(BaseModel):
     picture: str | None
     mural_unlocked: bool
     is_owner: bool = False
+    is_original_owner: bool = False
+
+
+class MuralOwnerGrant(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
 
 
 class MuralUnlockRequest(BaseModel):
@@ -35,6 +32,7 @@ class MuralPasswordChange(BaseModel):
 class AuthorizedMuralUser(BaseModel):
     user_id: str
     is_owner: bool
+    access_revoked: bool = False
     name: str
     email: str
     first_access_at: datetime

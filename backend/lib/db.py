@@ -23,10 +23,19 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("id", ASCENDING)], name="id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
     ],
+    "feedback_visitor_claims": [
+        IndexModel([("visitor_hash", ASCENDING)], name="visitor_hash_unique", unique=True),
+    ],
     "users": [
         IndexModel([("email", ASCENDING)], name="email", unique=True),
         IndexModel([("user_id", ASCENDING)], name="user_id", unique=True),
         IndexModel([("mural_last_access_at", DESCENDING)], name="mural_last_access_desc"),
+    ],
+    "mural_owners": [
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
+    ],
+    "mural_access_revocations": [
+        IndexModel([("email", ASCENDING)], name="email", unique=True),
     ],
     "mural_photos": [
         IndexModel([("id", ASCENDING)], name="id", unique=True),

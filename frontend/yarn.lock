@@ -300,16 +300,6 @@
   resolved "https://registry.yarnpkg.com/@dotenvx/primitives/-/primitives-0.8.0.tgz#25f3af8f876717deb00b21c64df8a7ba05d16b2c"
   integrity sha512-VYJy0uhFm9zTJ1TxBaW/pA8bjbOM/OttaNMwZ1RHG4JKyRG7DhSdiqD1ipQoAyoD22olUtxbP78W9xY3Wd11bg==
 
-"@emergentbase/overlay@https://assets.emergent.sh/npm/emergentbase-overlay-0.1.31.tgz":
-  version "0.1.31"
-  resolved "https://assets.emergent.sh/npm/emergentbase-overlay-0.1.31.tgz#34ef84415d729ae89a1eb6748a53f511cc130b1b"
-  dependencies:
-    "@jridgewell/trace-mapping" "^0.3.25"
-
-"@emergentbase/visual-edits@https://assets.emergent.sh/npm/emergentbase-visual-edits-1.0.17.tgz":
-  version "1.0.17"
-  resolved "https://assets.emergent.sh/npm/emergentbase-visual-edits-1.0.17.tgz#4878e60db4f5653ce61fe13772511c2508cee2c8"
-
 "@emnapi/core@1.11.1":
   version "1.11.1"
   resolved "https://registry.yarnpkg.com/@emnapi/core/-/core-1.11.1.tgz#b9e1064f3a6b1631e241e638eb48d736bfd372a6"

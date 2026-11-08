@@ -1,7 +1,3 @@
-export interface GoogleSessionExchange {
-  session_id: string;
-}
-
 export interface MuralUnlockRequest {
   password: string;
 }
@@ -13,6 +9,7 @@ export interface AuthUser {
   picture: string | null;
   mural_unlocked: boolean;
   is_owner: boolean;
+  is_original_owner: boolean;
 }
 
 export interface MuralPasswordChange {
@@ -22,8 +19,15 @@ export interface MuralPasswordChange {
 export interface AuthorizedMuralUser {
   user_id: string;
   is_owner: boolean;
+  access_revoked: boolean;
   name: string;
   email: string;
   first_access_at: string;
   last_access_at: string;
+}
+export interface MuralOwner {
+  email: string;
+  is_original: boolean;
+  granted_by: string | null;
+  created_at: string | null;
 }

@@ -14,17 +14,19 @@ import {
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { ApiError, apiDelete, apiGet, apiPost } from "@/lib/api";
-import type { AuthorizedMuralUser, AuthUser, MuralUnlockRequest } from "@/lib/auth";
+import type { AuthorizedMuralUser, AuthUser, MuralOwner, MuralUnlockRequest } from "@/lib/auth";
 import type {
   FeedbackCreate,
   FeedbackReceipt,
   FeedbackSummary,
 } from "@/lib/feedback";
 import { Toaster } from "@/components/ui/sonner";
-import { endSession } from "@/lib/session";
+import { beginSession, endSession } from "@/lib/session";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 import MuralMessages from "@/components/MuralMessages";
 import type { UnreadCount } from "@/lib/mural";
 import OwnerPasswordCard from "@/components/OwnerPasswordCard";
+import OwnerFeedbackManager from "@/components/OwnerFeedbackManager";
 
 const ratings = [
   { value: 1, label: "Horrível", face: "😡", color: "rose" },
@@ -35,11 +37,27 @@ const ratings = [
 ] as const;
 
 const ratingQuestions = [
-  { key: "decoration", label: "Como estava a decoração da feira?" },
-  { key: "presentation", label: "Como estava a apresentação da feira?" },
   {
-    key: "information",
-    label: "Como estava a quantidade de informações apresentadas?",
+    key: "clarity",
+    label: "O grupo explicou de forma clara e fácil de entender?",
+    options: [
+      { value: 1, label: "Muito confuso", face: "😡", color: "rose" },
+      { value: 2, label: "Confuso", face: "🙁", color: "orange" },
+      { value: 3, label: "Razoável", face: "😐", color: "yellow" },
+      { value: 4, label: "Claro", face: "😊", color: "emerald" },
+      { value: 5, label: "Muito claro", face: "🤩", color: "sky" },
+    ],
+  },
+  {
+    key: "visuals",
+    label: "Os materiais visuais apresentados ajudaram no seu entendimento?",
+    options: [
+      { value: 1, label: "Não ajudaram", face: "😡", color: "rose" },
+      { value: 2, label: "Ajudaram pouco", face: "🙁", color: "orange" },
+      { value: 3, label: "Neutro", face: "😐", color: "yellow" },
+      { value: 4, label: "Ajudaram", face: "😊", color: "emerald" },
+      { value: 5, label: "Ajudaram muito", face: "🤩", color: "sky" },
+    ],
   },
 ] as const;
 
@@ -54,23 +72,27 @@ export default function Home() {
   const [selectedRatings, setSelectedRatings] = useState<
     Record<RatingQuestionKey, number | null>
   >({
-    decoration: null,
-    presentation: null,
-    information: null,
+    clarity: null,
+    visuals: null,
   });
   const [suggestion, setSuggestion] = useState("");
   const [sent, setSent] = useState(false);
   const [accessPassword, setAccessPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
+  const [ownerEmail, setOwnerEmail] = useState("");
+  const [pendingOwnerRemoval, setPendingOwnerRemoval] = useState<string | null>(null);
 
   const authQuery = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => apiGet<AuthUser>("/auth/me"),
-    enabled: view === "mural",
+    enabled: true,
     retry: false,
     staleTime: 30_000,
   });
+
+  const hasSubmittedCookie = () =>
+    document.cookie.split(";").some((cookie) => cookie.trim() === "feedback_submitted=1");
 
   const summaryQuery = useQuery({
     queryKey: ["feedback-summary"],
@@ -101,14 +123,50 @@ export default function Home() {
       authQuery.data?.mural_unlocked === true,
   });
 
+  const ownersQuery = useQuery({
+    queryKey: ["mural-owners"],
+    queryFn: () => apiGet<MuralOwner[]>("/auth/owners"),
+    retry: 1,
+    enabled: view === "mural" && authQuery.data?.is_owner === true && authQuery.data?.mural_unlocked === true,
+  });
+
   const removeAccess = useMutation({
     mutationFn: (userId: string) => apiDelete<void>(`/auth/authorized-users/${userId}`),
     onSuccess: async () => {
       setPendingRemoval(null);
       await queryClient.invalidateQueries({ queryKey: ["authorized-users"] });
-      toast.success("Acesso removido. A pessoa vai precisar da senha de novo.");
+      toast.success("Pessoa bloqueada. Ela não poderá voltar apenas digitando a senha.");
     },
     onError: () => toast.error("Não foi possível remover o acesso."),
+  });
+
+  const authorizeAccess = useMutation({
+    mutationFn: (userId: string) => apiPost<void>(`/auth/authorized-users/${userId}/authorize`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["authorized-users"] });
+      toast.success("Acesso autorizado novamente. A pessoa poderá entrar com a senha do mural.");
+    },
+    onError: () => toast.error("Não foi possível autorizar essa pessoa."),
+  });
+
+  const grantOwner = useMutation({
+    mutationFn: (email: string) => apiPost<MuralOwner>("/auth/owners", { email }),
+    onSuccess: async () => {
+      setOwnerEmail("");
+      await queryClient.invalidateQueries({ queryKey: ["mural-owners"] });
+      toast.success("Permissão de dono concedida.");
+    },
+    onError: () => toast.error("Não foi possível conceder essa permissão. Verifique o e-mail."),
+  });
+
+  const revokeOwner = useMutation({
+    mutationFn: (email: string) => apiDelete<void>(`/auth/owners/${encodeURIComponent(email)}`),
+    onSuccess: async () => {
+      setPendingOwnerRemoval(null);
+      await queryClient.invalidateQueries({ queryKey: ["mural-owners"] });
+      toast.success("Permissão de dono removida.");
+    },
+    onError: () => toast.error("Não foi possível remover essa permissão."),
   });
 
   const unlockMural = useMutation({
@@ -123,9 +181,13 @@ export default function Home() {
       toast.success("Acesso ao mural liberado.");
     },
     onError: (error) => {
+      const detail =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
       setPasswordError(
-        error instanceof ApiError && error.status === 403
-          ? "A senha do mural está incorreta."
+        typeof detail === "string"
+          ? detail
           : "Não foi possível verificar a senha. Tente novamente.",
       );
     },
@@ -136,22 +198,44 @@ export default function Home() {
       apiPost<FeedbackReceipt>("/feedback", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["feedback-summary"] });
-      setSent(true);
+      const auth = await authQuery.refetch();
+      if (auth.data?.mural_unlocked === true) {
+        setSelectedRatings({ clarity: null, visuals: null });
+        setSuggestion("");
+        setSent(false);
+      } else {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
+        setSent(true);
+      }
       toast.success("Avaliação enviada! Obrigado por apoiar a ciência jovem.");
     },
-    onError: () => {
-      toast.error("Não foi possível enviar agora. Tente novamente em instantes.");
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        document.cookie = "feedback_submitted=1; Max-Age=31536000; Path=/; Secure; SameSite=Lax";
+        setSent(true);
+        return;
+      }
+      const detail =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
+      toast.error(
+        typeof detail === "string"
+          ? detail
+          : "Não foi possível enviar agora. Tente novamente em instantes.",
+      );
     },
   });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const { decoration, presentation, information } = selectedRatings;
-    if (decoration === null || presentation === null || information === null) return;
+    const { clarity, visuals } = selectedRatings;
+    if (clarity === null || visuals === null) return;
     submitFeedback.mutate({
-      rating: presentation,
-      decoration_rating: decoration,
-      information_rating: information,
+      rating: clarity,
+      // Keep the existing API fields compatible while the form uses the two new criteria.
+      decoration_rating: clarity,
+      information_rating: visuals,
       suggestion,
     });
   }
@@ -162,25 +246,22 @@ export default function Home() {
     unlockMural.mutate({ password: accessPassword });
   }
 
-  function loginWithGoogle() {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = `${window.location.origin}/?view=mural`;
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+  async function handleGoogleCredential(credential: string) {
+    try {
+      const user = await apiPost<AuthUser>("/auth/google", { credential });
+      beginSession();
+      queryClient.setQueryData(["auth-me"], user);
+    } catch (error) {
+      const message =
+        error instanceof ApiError && typeof error.body === "object" && error.body
+          ? (error.body as { detail?: unknown }).detail
+          : null;
+      toast.error(typeof message === "string" ? message : "Não foi possível entrar com Google. Tente novamente.");
+    }
   }
 
   async function handleLogout() {
     await endSession("/?view=mural");
-  }
-
-  function startNewFeedback() {
-    setSelectedRatings({
-      decoration: null,
-      presentation: null,
-      information: null,
-    });
-    setSuggestion("");
-    setSent(false);
-    setView("form");
   }
 
   const summary = summaryQuery.data;
@@ -191,49 +272,16 @@ export default function Home() {
     <div className="min-h-svh bg-[#FAF9F5] text-slate-900">
       <Toaster />
       <div className="mx-auto w-full max-w-3xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-        <header className="flex items-center justify-between gap-3" data-testid="feedback-header">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex size-11 items-center justify-center rounded-2xl bg-teal-700 text-white shadow-sm"
-              data-testid="science-fair-mark"
-            >
-              <FlaskConical aria-hidden="true" className="size-5" />
-            </span>
-            <div>
-              <p className="font-heading text-sm font-bold text-teal-800" data-testid="brand-name">
-                Feira de Ciências
-              </p>
-              <p className="text-xs text-slate-500" data-testid="brand-tagline">
-                Toda ideia merece ser ouvida
-              </p>
-            </div>
-          </div>
-          <div
-            className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900"
-            data-testid="anonymous-header-badge"
-          >
-            <LockKeyhole aria-hidden="true" className="size-3.5" />
-            100% anônimo
-          </div>
-        </header>
-
-        <section className="mb-6 mt-8 max-w-2xl" data-testid="intro-section">
-          <p
-            className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-teal-700"
-            data-testid="intro-eyebrow"
-          >
-            Ciência cresce com boas ideias
-          </p>
-          <h1
-            className="font-heading text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl"
-            data-testid="intro-title"
-          >
-            Como foi a apresentação?
-          </h1>
-          <p className="mt-3 text-base leading-relaxed text-slate-600" data-testid="intro-description">
-            Sua opinião ajuda os estudantes a brilharem ainda mais na próxima vez.
-          </p>
-        </section>
+        <div
+          className="mb-6 mt-5 aspect-[0.9] overflow-hidden rounded-2xl bg-[#211f1b] sm:aspect-[2.69]"
+          data-testid="feedback-header-image"
+        >
+          <img
+            src="/tiradentes-header.jpg"
+            alt="Identidade visual do Colégio Tiradentes para a Feira de Ciências 2026."
+            className="relative left-1/2 block h-full w-[300%] max-w-none -translate-x-1/2 object-cover sm:left-0 sm:h-auto sm:w-full sm:translate-x-0"
+          />
+        </div>
 
         <nav
           aria-label="Seções da feira"
@@ -244,7 +292,7 @@ export default function Home() {
             aria-current={view === "form" ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors duration-200 ${
               view === "form"
-                ? "bg-teal-700 text-white shadow-sm"
+                ? "bg-[#201F1B] text-white shadow-sm"
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-avaliar"
@@ -258,7 +306,7 @@ export default function Home() {
             aria-current={view === "mural" ? "page" : undefined}
             className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors duration-200 ${
               view === "mural"
-                ? "bg-teal-700 text-white shadow-sm"
+                ? "bg-[#201F1B] text-white shadow-sm"
                 : "text-slate-600 hover:bg-teal-50 hover:text-teal-900"
             }`}
             data-testid="tab-mural"
@@ -266,7 +314,7 @@ export default function Home() {
             type="button"
           >
             <BarChart3 aria-hidden="true" className="size-4" />
-            Mural da feira
+            Mural da Feira
             {view !== "mural" && (unreadQuery.data?.count ?? 0) > 0 && (
               <span
                 aria-label={`${unreadQuery.data?.count} mensagens privadas novas`}
@@ -280,29 +328,17 @@ export default function Home() {
         </nav>
 
         {view === "form" && (
-          sent ? (
+          (sent || hasSubmittedCookie()) && authQuery.data?.mural_unlocked !== true ? (
             <section
               className="rounded-3xl border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-7 shadow-sm sm:p-9"
               data-testid="feedback-success-card"
             >
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-emerald-100 text-3xl">
-                <span aria-hidden="true">🌱</span>
-              </div>
               <h2 className="font-heading text-2xl font-bold text-slate-900" data-testid="feedback-success-message">
-                Obrigado por compartilhar!
+                Você já enviou sua avaliação!
               </h2>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-slate-600" data-testid="feedback-success-description">
-                Sua avaliação anônima já ajuda a próxima apresentação a ficar ainda melhor.
+                Cada visitante pode enviar apenas uma avaliação. Obrigado por participar!
               </p>
-              <button
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-700 px-5 font-bold text-white transition-colors duration-200 hover:bg-teal-800"
-                data-testid="new-feedback-button"
-                onClick={startNewFeedback}
-                type="button"
-              >
-                Avaliar outra apresentação
-                <Sparkles aria-hidden="true" className="size-4" />
-              </button>
             </section>
           ) : (
             <form
@@ -332,7 +368,7 @@ export default function Home() {
                       data-testid={`rating-options-${question.key}`}
                       role="radiogroup"
                     >
-                      {ratings.map((option) => {
+                      {question.options.map((option) => {
                         const selected = selectedRatings[question.key] === option.value;
                         const palette = {
                           rose: selected
@@ -390,18 +426,20 @@ export default function Home() {
               </div>
 
               <div className="mt-7">
-                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800" htmlFor="suggestion" data-testid="suggestion-label">
+                <label className="mb-1 flex items-center gap-2 text-sm font-bold text-slate-800" htmlFor="suggestion" data-testid="suggestion-label">
                   <MessageCircle aria-hidden="true" className="size-4 text-teal-700" />
-                  Uma sugestão para a próxima vez?
-                  <span className="font-normal text-slate-500">(opcional)</span>
+                  Deixe seu Feedback
                 </label>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  Tem alguma sugestão, elogio ou comentário para o nosso grupo? Conte para a gente! (Opcional)
+                </p>
                 <textarea
                   className="min-h-28 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-relaxed text-slate-900 outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-slate-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
                   data-testid="suggestion-textarea"
                   id="suggestion"
                   maxLength={280}
                   onChange={(event) => setSuggestion(event.target.value)}
-                  placeholder="Deixe uma dica amiga para os estudantes brilharem na próxima!"
+                  placeholder="Digite seu feedback aqui..."
                   value={suggestion}
                 />
                 <p className="mt-1 text-right text-xs text-slate-500" data-testid="suggestion-character-count">
@@ -454,15 +492,9 @@ export default function Home() {
                 <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-700" data-testid="google-login-gate-copy">
                   Entre com sua conta Google e depois digite a senha compartilhada para ver as avaliações e sugestões.
                 </p>
-                <button
-                  className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-xl bg-slate-900 px-5 font-bold text-white transition-colors duration-200 hover:bg-slate-700"
-                  data-testid="google-login-button"
-                  onClick={loginWithGoogle}
-                  type="button"
-                >
-                  Entrar com Google
-                  <span aria-hidden="true" className="text-lg">G</span>
-                </button>
+                <div className="mt-5" data-testid="google-login-button">
+                  <GoogleSignInButton onCredential={handleGoogleCredential} />
+                </div>
               </div>
             )}
 
@@ -675,7 +707,13 @@ export default function Home() {
                               Dono
                             </span>
                           )}
-                          {authQuery.data?.is_owner && !person.is_owner && (
+                          {person.access_revoked && <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700">Bloqueado</span>}
+                          {authQuery.data?.is_owner && !person.is_owner && person.access_revoked && (
+                            <button className="min-h-9 rounded-lg border border-teal-200 px-3 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:opacity-50" disabled={authorizeAccess.isPending} onClick={() => authorizeAccess.mutate(person.user_id)} type="button">
+                              Autorizar novamente
+                            </button>
+                          )}
+                          {authQuery.data?.is_owner && !person.is_owner && !person.access_revoked && (
                             pendingRemoval === person.user_id ? (
                               <span className="flex items-center gap-2">
                                 <button
@@ -719,8 +757,53 @@ export default function Home() {
               )}
             </div>
 
+            {authQuery.data.is_owner && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6" data-testid="mural-owner-management">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck aria-hidden="true" className="size-5 text-teal-700" />
+                  <h3 className="font-heading text-lg font-bold text-slate-900">Gerenciar donos</h3>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  Donos podem administrar o mural e avaliações. Somente o dono original pode conceder ou retirar essa permissão.
+                </p>
+                {ownersQuery.isLoading && <p className="mt-3 text-sm text-slate-600">Carregando donos…</p>}
+                {ownersQuery.isError && <p className="mt-3 text-sm text-amber-800">Não foi possível carregar a lista de donos.</p>}
+                {ownersQuery.data && (
+                  <ul className="mt-3 divide-y divide-slate-100">
+                    {ownersQuery.data.map((person) => (
+                      <li key={person.email} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{person.email}</p>
+                          <p className="text-xs text-slate-500">{person.is_original ? "Dono original — não pode ser removido" : "Dono delegado"}</p>
+                        </div>
+                        {authQuery.data.is_original_owner && !person.is_original && (
+                          pendingOwnerRemoval === person.email ? (
+                            <span className="flex items-center gap-2">
+                              <button className="min-h-9 rounded-lg bg-rose-700 px-3 text-xs font-bold text-white disabled:bg-slate-300" disabled={revokeOwner.isPending} onClick={() => revokeOwner.mutate(person.email)} type="button">
+                                {revokeOwner.isPending ? "Removendo…" : "Confirmar"}
+                              </button>
+                              <button className="min-h-9 rounded-lg px-3 text-xs font-semibold text-slate-600" onClick={() => setPendingOwnerRemoval(null)} type="button">Cancelar</button>
+                            </span>
+                          ) : (
+                            <button className="min-h-9 rounded-lg border border-rose-200 px-3 text-xs font-bold text-rose-700 hover:bg-rose-50" onClick={() => setPendingOwnerRemoval(person.email)} type="button">Remover dono</button>
+                          )
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {authQuery.data.is_original_owner && (
+                  <form className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row" onSubmit={(event) => { event.preventDefault(); if (ownerEmail.trim()) grantOwner.mutate(ownerEmail.trim()); }}>
+                    <input aria-label="E-mail Google do novo dono" className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm" type="email" placeholder="E-mail da conta Google" value={ownerEmail} onChange={(event) => setOwnerEmail(event.target.value)} required />
+                    <button className="min-h-11 rounded-lg bg-teal-700 px-4 text-sm font-bold text-white disabled:bg-slate-300" disabled={!ownerEmail.trim() || grantOwner.isPending} type="submit">{grantOwner.isPending ? "Concedendo…" : "Tornar dono"}</button>
+                  </form>
+                )}
+              </section>
+            )}
+
             <MuralMessages me={authQuery.data} people={authorizedUsersQuery.data ?? []} />
 
+            {authQuery.data.is_owner && <OwnerFeedbackManager />}
             {authQuery.data.is_owner && <OwnerPasswordCard />}
             {summaryQuery.isLoading && (
               <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600" data-testid="mural-loading">
